@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BrandLogo } from '@/components/brand-logo';
 import useStore from '@/store/useStore';
 import { useCallback, useState } from 'react';
 
@@ -74,15 +75,20 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          About Reprogrammer
-        </Text>
+        <View style={styles.brandRow}>
+          <BrandLogo size={56} variant="tile" />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              About Reprogrammer
+            </Text>
+            <Text style={[styles.tagline, { color: colors.tint }]}>
+              Notice · Repeat · Reprogram
+            </Text>
+          </View>
+        </View>
         <Text style={[styles.descriptionText, { color: colors.textMuted }]}>
           Reprogrammer uses spaced repetition to help you become aware of automatic
           behaviors and practice changing them.
-        </Text>
-        <Text style={[styles.tagline, { color: colors.tint }]}>
-          Notice · Repeat · Reprogram
         </Text>
       </View>
 
@@ -138,6 +144,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 24,
     gap: 12,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
   sectionTitle: {
     fontSize: 18,

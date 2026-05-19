@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { BrandLogo } from '@/components/brand-logo';
 import useStore from '@/store/useStore';
 import { Behavior } from '@/types';
 import { generateUUID } from '@/utils/uuid';
@@ -69,11 +70,14 @@ export default function OnboardingScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
+        <View style={styles.logoWrap}>
+          <BrandLogo size={84} variant="tile" />
+        </View>
         <Text style={[styles.title, { color: colors.text }]}>Reprogrammer</Text>
-        <Text style={[styles.subtitle, { color: colors.text }]}>
-          Notice • Repeat • Reprogram
+        <Text style={[styles.subtitle, { color: colors.tint }]}>
+          Notice · Repeat · Reprogram
         </Text>
-        <Text style={[styles.description, { color: colors.text }]}>
+        <Text style={[styles.description, { color: colors.textMuted }]}>
           Choose a state to practice, or skip to create your own.
         </Text>
 
@@ -112,18 +116,23 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  logoWrap: {
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 16,
+  },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textAlign: 'center',
-    marginTop: 40,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 13,
     textAlign: 'center',
     marginBottom: 20,
-    fontStyle: 'italic',
+    fontWeight: '600',
+    letterSpacing: 1.5,
   },
   description: {
     fontSize: 14,

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Reprogrammer app icon">
+  
+  <defs>
+    <clipPath id="r">
+      <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#r)">
+    <rect width="1024" height="1024" fill="#a3ff93"></rect>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="700" fill="#176b08">
+      <text x="512" y="640" text-anchor="middle" font-size="520" letter-spacing="-20">&gt;R</text>
+    </g>
+    
+    <rect x="664" y="320" width="120" height="280" fill="#176b08">
+      
+    </rect>
+  </g>
+</svg>

@@ -36,6 +36,14 @@ const MAPPING = {
   'play.fill': 'play-arrow',
   'flame.fill': 'local-fire-department',
   'bell.fill': 'notifications',
+  // State detail action buttons
+  'pencil': 'edit',
+  'bookmark': 'bookmark-border',
+  'bookmark.fill': 'bookmark',
+  'archivebox.fill': 'archive',
+  'trash.fill': 'delete',
+  'arrow.left': 'arrow-back',
+  'arrow.right': 'arrow-forward',
 } as IconMapping;
 
 /**

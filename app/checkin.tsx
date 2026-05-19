@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import useStore from '@/store/useStore';
 import { CheckIn } from '@/types';
 import { generateUUID } from '@/utils/uuid';
@@ -84,11 +85,11 @@ export default function CheckInScreen() {
             disabled={isSubmitting}
             style={[
               styles.button,
-              styles.yesButton,
               { backgroundColor: colors.tint, opacity: isSubmitting ? 0.5 : 1 },
             ]}
           >
-            <Text style={styles.buttonText}>✓ Yes</Text>
+            <IconSymbol name="checkmark" size={22} color={colors.textOnBrand} />
+            <Text style={[styles.buttonText, { color: colors.textOnBrand }]}>Yes</Text>
           </Pressable>
           <Pressable
             onPress={() => handleResponse('no')}
@@ -102,15 +103,23 @@ export default function CheckInScreen() {
               },
             ]}
           >
-            <Text style={[styles.buttonText, { color: colors.tint }]}>✗ No</Text>
+            <IconSymbol name="xmark" size={22} color={colors.tint} />
+            <Text style={[styles.buttonText, { color: colors.tint }]}>No</Text>
           </Pressable>
         </View>
 
         <Text style={[styles.label, { color: colors.text }]}>Add a note (optional)</Text>
         <TextInput
-          style={[styles.noteInput, { color: colors.text, borderColor: colors.text }]}
+          style={[
+            styles.noteInput,
+            {
+              color: colors.text,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            },
+          ]}
           placeholder="How did it go?"
-          placeholderTextColor={colors.text + '80'}
+          placeholderTextColor={colors.textMuted}
           value={note}
           onChangeText={setNote}
           multiline
@@ -150,17 +159,18 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 20,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  yesButton: {},
   noButton: {
     borderWidth: 2,
     backgroundColor: 'transparent',
   },
   buttonText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: '700',
   },
   label: {
     fontSize: 14,

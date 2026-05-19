@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import useStore from '@/store/useStore';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
@@ -112,10 +113,17 @@ export default function BehaviorDetailScreen() {
         </Text>
       </View>
 
-      <View style={[styles.streakCard, { backgroundColor: colors.tint }]}>
-        <Text style={styles.streakLabel}>Current Streak</Text>
-        <Text style={styles.streakValue}>{streak}</Text>
-        <Text style={styles.streakDays}>days</Text>
+      <View style={[styles.streakCard, { backgroundColor: colors.successSoft }]}>
+        <Text style={[styles.streakLabel, { color: colors.stateEnabledText }]}>
+          Current Streak
+        </Text>
+        <View style={styles.streakRow}>
+          <IconSymbol name="flame.fill" size={40} color={colors.warning} />
+          <Text style={[styles.streakValue, { color: colors.stateEnabledText }]}>
+            {streak}
+          </Text>
+        </View>
+        <Text style={[styles.streakDays, { color: colors.stateEnabledText }]}>days</Text>
       </View>
 
       <View style={styles.section}>
@@ -206,40 +214,83 @@ export default function BehaviorDetailScreen() {
         )}
       </View>
 
-      <View style={styles.actionButtons}>
-        <Pressable
+      <View style={styles.iconActionRow}>
+        <IconActionButton
+          label="Edit"
+          icon="pencil"
           onPress={handleEdit}
-          style={[styles.actionButton, { backgroundColor: colors.tint }]}
-        >
-          <Text style={styles.actionButtonText}>Edit</Text>
-        </Pressable>
-        <Pressable
+          variant="primary"
+          colors={colors}
+        />
+        <IconActionButton
+          label={behavior.bookmarked ? 'Bookmarked' : 'Bookmark'}
+          icon={behavior.bookmarked ? 'bookmark.fill' : 'bookmark'}
           onPress={handleToggleBookmark}
-          style={[
-            styles.actionButton,
-            { borderColor: colors.tint, borderWidth: 1, backgroundColor: 'transparent' },
-          ]}
-        >
-          <Text style={[styles.actionButtonText, { color: colors.tint }]}>
-            {behavior.bookmarked ? '★ Bookmarked' : '☆ Bookmark'}
-          </Text>
-        </Pressable>
-        <Pressable
+          variant="ghost"
+          iconColor={behavior.bookmarked ? colors.warning : colors.textMuted}
+          colors={colors}
+        />
+        <IconActionButton
+          label="Archive"
+          icon="archivebox.fill"
           onPress={handleArchive}
-          style={[styles.actionButton, { backgroundColor: colors.text + '20' }]}
-        >
-          <Text style={[styles.actionButtonText, { color: colors.text }]}>
-            Archive
-          </Text>
-        </Pressable>
-        <Pressable
+          variant="neutral"
+          colors={colors}
+        />
+        <IconActionButton
+          label="Delete"
+          icon="trash.fill"
           onPress={handleDelete}
-          style={[styles.actionButton, { backgroundColor: '#ff0000' }]}
-        >
-          <Text style={styles.actionButtonText}>Delete</Text>
-        </Pressable>
+          variant="danger"
+          colors={colors}
+        />
       </View>
     </ScrollView>
+  );
+}
+
+type IconButtonVariant = 'primary' | 'ghost' | 'neutral' | 'danger';
+
+function IconActionButton({
+  label,
+  icon,
+  onPress,
+  variant,
+  iconColor,
+  colors,
+}: {
+  label: string;
+  icon: Parameters<typeof IconSymbol>[0]['name'];
+  onPress: () => void;
+  variant: IconButtonVariant;
+  iconColor?: string;
+  colors: typeof Colors.light;
+}) {
+  const styleByVariant = {
+    primary: { backgroundColor: colors.tint, borderColor: colors.tint, borderWidth: 0 },
+    ghost: { backgroundColor: 'transparent', borderColor: colors.border, borderWidth: 1.5 },
+    neutral: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted, borderWidth: 0 },
+    danger: { backgroundColor: colors.danger, borderColor: colors.danger, borderWidth: 0 },
+  }[variant];
+
+  const defaultIconColor =
+    variant === 'primary' || variant === 'danger'
+      ? colors.textOnBrand
+      : colors.text;
+
+  return (
+    <View style={styles.iconActionItem}>
+      <Pressable
+        onPress={onPress}
+        style={[styles.iconActionButton, styleByVariant]}
+        accessibilityLabel={label}
+      >
+        <IconSymbol name={icon} size={20} color={iconColor ?? defaultIconColor} />
+      </Pressable>
+      <Text style={[styles.iconActionLabel, { color: colors.textMuted }]}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -280,20 +331,24 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
+    gap: 4,
   },
   streakLabel: {
-    color: 'white',
     fontSize: 14,
-    marginBottom: 4,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   streakValue: {
-    color: 'white',
     fontSize: 48,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    lineHeight: 50,
   },
   streakDays: {
-    color: 'white',
     fontSize: 14,
+    fontWeight: '500',
   },
   section: {
     paddingHorizontal: 20,
@@ -344,19 +399,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  actionButtons: {
+  iconActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 8,
+    paddingBottom: 32,
+    gap: 12,
   },
-  actionButton: {
-    padding: 12,
+  iconActionItem: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  iconActionButton: {
+    width: 44,
+    height: 44,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionButtonText: {
-    color: 'white',
-    fontWeight: '600',
+  iconActionLabel: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   errorText: {
     textAlign: 'center',

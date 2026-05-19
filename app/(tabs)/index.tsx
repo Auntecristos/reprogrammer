@@ -137,6 +137,9 @@ function StateTile({ behavior, today, streak, colors, onPress }: TileProps) {
   const isActiveToday = behavior.activeDays.includes(today);
   const isEnabled = !isPaused && isActiveToday;
 
+  const textColor = isEnabled ? colors.stateEnabledText : colors.stateDisabledText;
+  const tags = (behavior.tags ?? []).slice(0, 3);
+
   return (
     <Pressable
       onPress={onPress}
@@ -151,56 +154,70 @@ function StateTile({ behavior, today, streak, colors, onPress }: TileProps) {
       {!isEnabled && <DiagonalStripes color={colors.stateDisabledStripe} />}
 
       <View style={styles.tileContent}>
-        <View style={styles.tileTopRow}>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.tileTitle,
-              { color: isEnabled ? colors.stateEnabledText : colors.stateDisabledText },
-            ]}
-          >
-            {behavior.title}
-          </Text>
-          {streak > 0 && (
-            <View style={styles.streakBadge}>
-              <IconSymbol name="flame.fill" size={12} color={colors.warning} />
-              <Text style={[styles.streakNumber, { color: colors.warning }]}>{streak}</Text>
+        <View style={styles.tileHead}>
+          <View style={styles.tileTopRow}>
+            <Text
+              numberOfLines={2}
+              ellipsizeMode="tail"
+              style={[styles.tileTitle, { color: textColor }]}
+            >
+              {behavior.title}
+            </Text>
+            {streak > 0 && (
+              <View style={styles.streakBadge}>
+                <IconSymbol name="flame.fill" size={12} color={colors.warning} />
+                <Text style={[styles.streakNumber, { color: colors.warning }]}>{streak}</Text>
+              </View>
+            )}
+          </View>
+
+          {tags.length > 0 && (
+            <View style={styles.tagRow}>
+              {tags.map((tag) => (
+                <View
+                  key={tag}
+                  style={[
+                    styles.tagChip,
+                    { backgroundColor: hexToAlpha(textColor, 0.18) },
+                  ]}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.tagText, { color: textColor }]}
+                  >
+                    {tag}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
         </View>
 
-        <Text
-          style={[
-            styles.tileWindow,
-            { color: isEnabled ? colors.stateEnabledText : colors.stateDisabledText },
-          ]}
-        >
-          {behavior.window.from} – {behavior.window.to}
-        </Text>
+        <View style={styles.tileFoot}>
+          <Text style={[styles.tileWindow, { color: textColor }]}>
+            {behavior.window.from} – {behavior.window.to}
+          </Text>
 
-        <View style={styles.daysRow}>
-          {DAY_LABELS.map((label, idx) => {
-            const isActive = behavior.activeDays.includes(idx);
-            return (
-              <Text
-                key={idx}
-                style={[
-                  styles.dayLabel,
-                  {
-                    color: isActive
-                      ? isEnabled
-                        ? colors.stateEnabledText
-                        : colors.stateDisabledText
-                      : colors.textMuted,
-                    opacity: isActive ? 1 : 0.4,
-                    fontWeight: isActive ? '700' : '400',
-                  },
-                ]}
-              >
-                {label}
-              </Text>
-            );
-          })}
+          <View style={styles.daysRow}>
+            {DAY_LABELS.map((label, idx) => {
+              const isActive = behavior.activeDays.includes(idx);
+              return (
+                <Text
+                  key={idx}
+                  style={[
+                    styles.dayLabel,
+                    {
+                      color: isActive ? textColor : colors.textMuted,
+                      opacity: isActive ? 1 : 0.4,
+                      fontWeight: isActive ? '700' : '400',
+                    },
+                  ]}
+                >
+                  {label}
+                </Text>
+              );
+            })}
+          </View>
         </View>
       </View>
     </Pressable>
@@ -208,11 +225,12 @@ function StateTile({ behavior, today, streak, colors, onPress }: TileProps) {
 }
 
 /**
- * Renders a diagonal-stripe overlay for paused/inactive state tiles.
- * Uses lightweight rotated View bars so we don't depend on SVG or images.
+ * Edge-to-edge diagonal stripe overlay (4px bars, 14px pitch, -45deg).
+ * Renders enough bars to cover the full diagonal of the tile so every
+ * corner is striped — matches the repeating-linear-gradient in the design.
  */
 function DiagonalStripes({ color }: { color: string }) {
-  const bars = Array.from({ length: 14 });
+  const bars = Array.from({ length: 28 });
   return (
     <View pointerEvents="none" style={styles.stripesContainer}>
       {bars.map((_, i) => (
@@ -220,15 +238,27 @@ function DiagonalStripes({ color }: { color: string }) {
           key={i}
           style={[
             styles.stripeBar,
-            {
-              top: i * 18 - 80,
-              backgroundColor: color,
-            },
+            { top: i * 14 - 120, backgroundColor: color },
           ]}
         />
       ))}
     </View>
   );
+}
+
+/**
+ * Apply an alpha channel to a hex color so chip backgrounds can derive from
+ * the text color (matches the design's translucent tag pattern).
+ */
+function hexToAlpha(hex: string, alpha: number): string {
+  const cleaned = hex.replace('#', '');
+  const v = cleaned.length === 3
+    ? cleaned.split('').map((c) => c + c).join('')
+    : cleaned;
+  const r = parseInt(v.slice(0, 2), 16);
+  const g = parseInt(v.slice(2, 4), 16);
+  const b = parseInt(v.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 const TILE_GAP = 12;
@@ -291,6 +321,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 1,
   },
+  tileHead: {
+    gap: 6,
+  },
+  tileFoot: {
+    marginTop: 'auto',
+  },
   tileTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -300,12 +336,30 @@ const styles = StyleSheet.create({
   tileTitle: {
     fontSize: 16,
     fontWeight: '700',
+    lineHeight: 19,
     flex: 1,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  tagChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    maxWidth: '100%',
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    paddingTop: 2,
   },
   streakNumber: {
     fontSize: 12,
@@ -314,7 +368,6 @@ const styles = StyleSheet.create({
   tileWindow: {
     fontSize: 12,
     opacity: 0.85,
-    marginTop: 4,
   },
   daysRow: {
     flexDirection: 'row',
@@ -343,10 +396,10 @@ const styles = StyleSheet.create({
   },
   stripeBar: {
     position: 'absolute',
-    left: -60,
-    width: 300,
-    height: 6,
-    opacity: 0.45,
+    left: -120,
+    width: 480,
+    height: 4,
+    opacity: 0.55,
     transform: [{ rotate: '-45deg' }],
   },
 });

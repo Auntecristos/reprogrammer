@@ -25,7 +25,6 @@ import { useState, useMemo } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const ACCENT = '#FF9500';
 
 function hhmmToDate(hhmm: string): Date {
   const [h, m] = hhmm.split(':').map((n) => parseInt(n, 10));
@@ -183,15 +182,25 @@ export default function CreateScreen() {
         style={[
           styles.timeChip,
           {
-            backgroundColor: isOpen ? ACCENT : colors.background,
-            borderColor: ACCENT,
+            backgroundColor: isOpen ? colors.stateEnabledBg : colors.background,
+            borderColor: colors.tintMuted,
           },
         ]}
       >
-        <Text style={[styles.timeChipText, { color: isOpen ? 'white' : colors.text }]}>
+        <Text
+          style={[
+            styles.timeChipText,
+            { color: isOpen ? colors.stateEnabledText : colors.text },
+          ]}
+        >
           {display.time}
         </Text>
-        <Text style={[styles.timeChipPeriod, { color: isOpen ? 'white' : colors.text + 'AA' }]}>
+        <Text
+          style={[
+            styles.timeChipPeriod,
+            { color: isOpen ? colors.stateEnabledText : colors.textMuted },
+          ]}
+        >
           {display.period}
         </Text>
       </Pressable>
@@ -246,14 +255,15 @@ export default function CreateScreen() {
                   style={[
                     styles.dayPill,
                     {
-                      backgroundColor: active ? ACCENT : colors.text + '22',
+                      backgroundColor: active ? colors.tintSoft : 'transparent',
+                      borderColor: active ? colors.tintMuted : colors.border,
                     },
                   ]}
                 >
                   <Text
                     style={[
                       styles.dayPillLetter,
-                      { color: active ? 'white' : colors.text },
+                      { color: active ? colors.stateEnabledText : colors.textMuted },
                     ]}
                   >
                     {letter}
@@ -287,14 +297,15 @@ export default function CreateScreen() {
                   style={[
                     styles.intervalChip,
                     {
-                      backgroundColor: active ? ACCENT : colors.text + '22',
+                      backgroundColor: active ? colors.tintSoft : 'transparent',
+                      borderColor: active ? colors.tintMuted : colors.border,
                     },
                   ]}
                 >
                   <Text
                     style={[
                       styles.intervalChipText,
-                      { color: active ? 'white' : colors.text },
+                      { color: active ? colors.stateEnabledText : colors.textMuted },
                     ]}
                   >
                     {mins}m
@@ -305,20 +316,22 @@ export default function CreateScreen() {
           </View>
         </View>
 
-        <Text style={[styles.previewText, { color: colors.text + 'AA' }]}>{previewText}</Text>
+        <Text style={[styles.previewText, { color: colors.textMuted }]}>{previewText}</Text>
 
         <View style={styles.buttonRow}>
           <Pressable
             onPress={handleCancel}
-            style={[styles.actionButton, { backgroundColor: colors.text + '22' }]}
+            style={[styles.actionButton, { backgroundColor: colors.surfaceMuted }]}
           >
             <Text style={[styles.actionButtonText, { color: colors.text }]}>Cancel</Text>
           </Pressable>
           <Pressable
             onPress={handleSave}
-            style={[styles.actionButton, { backgroundColor: ACCENT }]}
+            style={[styles.actionButton, { backgroundColor: colors.tint }]}
           >
-            <Text style={[styles.actionButtonText, { color: 'white' }]}>Save</Text>
+            <Text style={[styles.actionButtonText, { color: colors.textOnBrand }]}>
+              Save
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -398,6 +411,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 8,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -422,6 +436,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    borderWidth: 1.5,
   },
   intervalChipText: {
     fontSize: 13,
