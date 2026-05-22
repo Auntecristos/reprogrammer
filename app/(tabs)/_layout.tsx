@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -38,11 +38,16 @@ function FloatingTabBarBackground() {
   );
 }
 
+const TAB_BAR_WIDTH = 340;
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const isDark = colorScheme === 'dark';
+
+  const horizontalOffset = Math.max(16, (windowWidth - TAB_BAR_WIDTH) / 2);
 
   return (
     <Tabs
@@ -63,10 +68,9 @@ export default function TabLayout() {
         tabBarBackground: () => <FloatingTabBarBackground />,
         tabBarStyle: {
           position: 'absolute',
-          left: '50%',
+          left: horizontalOffset,
+          right: horizontalOffset,
           bottom: Math.max(insets.bottom, 14),
-          transform: [{ translateX: -170 }],
-          width: 340,
           height: 64,
           borderRadius: 999,
           borderTopWidth: 0,
