@@ -86,7 +86,7 @@ export default function DashboardScreen() {
   ).length;
 
   const handleCreate = () => router.push('/create');
-  const handleOpenProfile = () => router.push('/explore');
+  const handleOpenProfile = () => router.push('/(tabs)/profile');
 
   // --- Select-mode handlers ---
 
@@ -372,7 +372,7 @@ export default function DashboardScreen() {
             </Text>
             <View style={styles.emptyCtaRow}>
               <Pressable
-                onPress={() => router.push('/(tabs)/states')}
+                onPress={() => router.push('/(tabs)/library')}
                 style={[
                   styles.emptyCta,
                   styles.emptyCtaSecondary,
