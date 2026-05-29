@@ -50,12 +50,15 @@ export default function TabLayout() {
       {/*
         Hide the old `explore` tab from the bar so we don't break navigation
         for users on the previous build. The route still exists as a fallback
-        until the screens have fully migrated.
+        until the screens have fully migrated. `href: null` drops it from
+        URL routing; `tabBarButton: () => null` also removes the button from
+        the view tree so VoiceOver doesn't count it ("3 of 4" with 3 visible).
       */}
       <Tabs.Screen
         name="explore"
         options={{
           href: null,
+          tabBarButton: () => null,
         }}
       />
     </Tabs>

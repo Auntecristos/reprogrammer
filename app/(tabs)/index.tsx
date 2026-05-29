@@ -570,7 +570,7 @@ function StateTile({
       ]}
       accessibilityLabel={`${behavior.title}, ${
         behavior.kind === 'eliminate' ? 'Eliminate' : 'Adopt'
-      }, ${stageLabel(stage)}, ${
+      }, ${isPaused ? 'Paused' : stageLabel(stage)}, ${
         streak > 0 ? `${streak} day streak` : 'no current streak'
       }${labelSuffix}`}
       accessibilityHint={
