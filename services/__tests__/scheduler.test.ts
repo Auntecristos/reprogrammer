@@ -138,6 +138,75 @@ for (const ts of tFuture) {
   expect(ts >= future.getTime(), `ts ${new Date(ts).toLocaleTimeString()} ≥ now`);
 }
 
+// Per-time pause filter — regression for the "1 day" pause that used to
+// run ~32–48h because the filter skipped any day whose midnight was
+// before pausedUntil. Now pausedUntil filters individual candidates.
+const pauseDay = new Date(2026, 4, 29);
+const pauseDayNoon = new Date(2026, 4, 29, 12, 0, 0).getTime();
+const pauseDay9am = new Date(2026, 4, 29, 9, 0, 0).getTime();
+const nextDayNoon = new Date(2026, 4, 30, 12, 0, 0).getTime();
+const nextDay = new Date(2026, 4, 30);
+
+// Pause from noon today until noon tomorrow (24h).
+const pausedToday = generateTimesForDay({
+  date: pauseDay,
+  windowFrom: '09:00',
+  windowTo: '21:00',
+  intervalMinutes: 60,
+  level: 1,
+  now: pauseDay9am,
+  rng: mulberry32(42),
+  maxPings: 12,
+  pausedUntil: nextDayNoon,
+});
+// Today's window is 09:00–12:00 (paused 12:00 →) so we should still see
+// a few morning candidates before noon.
+expect(pausedToday.every((t) => t < pauseDayNoon), 'today: no candidates ≥ pause start');
+
+const pausedTomorrow = generateTimesForDay({
+  date: nextDay,
+  windowFrom: '09:00',
+  windowTo: '21:00',
+  intervalMinutes: 60,
+  level: 1,
+  now: pauseDay9am,
+  rng: mulberry32(43),
+  maxPings: 12,
+  pausedUntil: nextDayNoon,
+});
+expect(pausedTomorrow.length > 0, 'tomorrow: pause lifts, attempts resume');
+expect(
+  pausedTomorrow.every((t) => t >= nextDayNoon),
+  'tomorrow: all candidates ≥ pause-end (no carry-over into the paused half)'
+);
+
+// pausedUntil in the past should be a no-op.
+const tNoPauseEffect = generateTimesForDay({
+  date: pauseDay,
+  windowFrom: '09:00',
+  windowTo: '21:00',
+  intervalMinutes: 60,
+  level: 1,
+  now: pauseDay9am,
+  rng: mulberry32(44),
+  maxPings: 12,
+  pausedUntil: pauseDay9am - 60_000, // 1min ago
+});
+const tNoPauseControl = generateTimesForDay({
+  date: pauseDay,
+  windowFrom: '09:00',
+  windowTo: '21:00',
+  intervalMinutes: 60,
+  level: 1,
+  now: pauseDay9am,
+  rng: mulberry32(44),
+  maxPings: 12,
+});
+expect(
+  JSON.stringify(tNoPauseEffect) === JSON.stringify(tNoPauseControl),
+  'past pausedUntil is a no-op'
+);
+
 if (failures === 0) {
   console.log(`OK — scheduler tests passed (${t1.length} pings generated for L1 15min 9-21).`);
   process.exit(0);
