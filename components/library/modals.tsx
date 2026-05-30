@@ -396,6 +396,7 @@ export function ContentModal({
       {target && (
         <View
           style={[styles.modalContainer, { backgroundColor: colors.background }]}
+          accessibilityViewIsModal
         >
           <ModalHeader
             canBack={canBack}

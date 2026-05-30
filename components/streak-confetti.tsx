@@ -20,6 +20,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Radius } from '@/constants/theme';
 
 const PARTICLE_COUNT = 12;
 const BURST_DURATION_MS = 800;
@@ -142,6 +143,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    borderRadius: 999,
+    borderRadius: Radius.pill,
   },
 });

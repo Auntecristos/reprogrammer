@@ -249,11 +249,15 @@ export default function BehaviorDetailScreen() {
       </View>
 
       <View style={[styles.streakCard, { backgroundColor: colors.tint }]}>
-        <Text style={styles.streakLabel}>
+        <Text style={[styles.streakLabel, { color: colors.textOnBrand }]}>
           {stageLabel(deriveStage(behavior.level, streak))}
         </Text>
-        <Text style={styles.streakValue}>{streak}</Text>
-        <Text style={styles.streakDays}>day streak</Text>
+        <Text style={[styles.streakValue, { color: colors.textOnBrand }]}>
+          {streak}
+        </Text>
+        <Text style={[styles.streakDays, { color: colors.textOnBrand }]}>
+          day streak
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -496,16 +500,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   streakLabel: {
-    color: 'white',
     ...Type.body,
     marginBottom: Space.xs,
   },
   streakValue: {
-    color: 'white',
     ...Type.display,
   },
   streakDays: {
-    color: 'white',
     ...Type.body,
   },
   section: {
