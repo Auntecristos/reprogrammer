@@ -92,12 +92,25 @@ function migrateBehavior(b: LegacyBehavior): Behavior {
   };
 }
 
+/**
+ * Transient backup of a just-deleted behavior so the dashboard can offer
+ * an Undo affordance for ~5s after the deletion. Lives in memory only —
+ * persisting it would let "yesterday's delete" resurrect itself today.
+ */
+export interface PendingUndoDelete {
+  kind: 'delete';
+  behavior: Behavior;
+  attempts: ReminderAttempt[];
+  deletedAt: number;
+}
+
 interface StoreState {
   behaviors: Behavior[];
   checkIns: CheckIn[];
   reminderAttempts: ReminderAttempt[];
   appProfile: AppProfile;
   isHydrated: boolean;
+  pendingUndo: PendingUndoDelete | null;
 
   hydrate: () => Promise<void>;
   addBehavior: (behavior: Behavior) => Promise<void>;
@@ -112,6 +125,15 @@ interface StoreState {
   addReminderAttempt: (attempt: ReminderAttempt) => Promise<void>;
   updateReminderAttempt: (attempt: ReminderAttempt) => Promise<void>;
   getReminderAttempts: (behaviorId: string) => ReminderAttempt[];
+  /** Stash a just-deleted behavior so the Undo banner can resurface it. */
+  setPendingUndo: (p: PendingUndoDelete | null) => void;
+  /**
+   * Restore the queued deletion: re-add the behavior, re-add its attempts,
+   * clear the queue. Returns the restored behavior so callers can
+   * reschedule notifications (we don't import services/notifications here
+   * to avoid a cycle).
+   */
+  restorePendingUndo: () => Promise<Behavior | null>;
 }
 
 const useStore = create<StoreState>((set, get) => ({
@@ -120,6 +142,7 @@ const useStore = create<StoreState>((set, get) => ({
   reminderAttempts: [],
   appProfile: { hasOnboarded: false },
   isHydrated: false,
+  pendingUndo: null,
 
   hydrate: async () => {
     try {
@@ -238,6 +261,31 @@ const useStore = create<StoreState>((set, get) => ({
   getReminderAttempts: (behaviorId: string) => {
     const state = get();
     return state.reminderAttempts.filter((ra) => ra.behaviorId === behaviorId);
+  },
+
+  setPendingUndo: (p) => {
+    set({ pendingUndo: p });
+  },
+
+  restorePendingUndo: async () => {
+    const state = get();
+    const pending = state.pendingUndo;
+    if (!pending) return null;
+    // Re-add the behavior + its attempts. We avoid calling the public
+    // addBehavior / addReminderAttempt methods because they each touch
+    // AsyncStorage once; one consolidated write is faster and safer.
+    const updatedBehaviors = [...state.behaviors, pending.behavior];
+    const updatedAttempts = [...state.reminderAttempts, ...pending.attempts];
+    set({
+      behaviors: updatedBehaviors,
+      reminderAttempts: updatedAttempts,
+      pendingUndo: null,
+    });
+    await Promise.all([
+      AsyncStorage.setItem(BEHAVIORS_KEY, JSON.stringify(updatedBehaviors)),
+      AsyncStorage.setItem('rpg.reminderAttempts.v1', JSON.stringify(updatedAttempts)),
+    ]);
+    return pending.behavior;
   },
 }));
 
