@@ -11,7 +11,12 @@
  *  - consecutiveNoCount: only 'no' counts; 'yes' or 'tried' interrupt
  */
 import { startOfDay, subDays } from 'date-fns';
-import { calculateStreak, consecutiveNoCount } from '../streak';
+import {
+  STREAK_MILESTONES,
+  calculateStreak,
+  consecutiveNoCount,
+  isStreakMilestone,
+} from '../streak';
 import { CheckIn } from '../../types';
 
 let failures = 0;
@@ -154,6 +159,26 @@ expect(
     ci(0, 'no', { behaviorId: 'other' }),
   ]) === 0,
   'other behaviors do not contribute to no-count'
+);
+
+// --- isStreakMilestone ---
+
+expect(isStreakMilestone(0) === false, '0 is not a milestone');
+expect(isStreakMilestone(1) === false, '1 is not a milestone');
+expect(isStreakMilestone(2) === false, '2 is not a milestone');
+expect(isStreakMilestone(3) === true, '3 is the first milestone');
+expect(isStreakMilestone(7) === true, '7 is a milestone (level-up boundary)');
+expect(isStreakMilestone(14) === true, '14 is a milestone');
+expect(isStreakMilestone(30) === true, '30 is a milestone');
+expect(isStreakMilestone(8) === false, '8 is not a milestone');
+expect(isStreakMilestone(31) === false, '31 is not a milestone (no celebration past 30)');
+expect(isStreakMilestone(100) === false, 'large streaks are quiet');
+
+expect(
+  STREAK_MILESTONES.length === 4 &&
+    STREAK_MILESTONES[0] === 3 &&
+    STREAK_MILESTONES[STREAK_MILESTONES.length - 1] === 30,
+  'STREAK_MILESTONES exposes the canonical [3,7,14,30] list'
 );
 
 // --- summary ---
