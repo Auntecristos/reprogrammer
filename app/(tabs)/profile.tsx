@@ -8,12 +8,37 @@ import useStore from '@/store/useStore';
 import { useCallback, useState } from 'react';
 import { deriveStage } from '@/services/levels';
 import { rescheduleAll } from '@/services/notifications';
+import { computeWeeklySummary } from '@/services/weekly-summary';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   hhmmToDate,
   dateToHHmm,
   formatTimeForDisplayString,
 } from '@/utils/time';
+
+/**
+ * One of four numbers inside the "This week" card. Renders the value in a
+ * large weight, label in caption below. Pulled out so the card body stays
+ * scannable in the JSX.
+ */
+function WeeklyMetric({
+  value,
+  label,
+  tint,
+  labelColor,
+}: {
+  value: number;
+  label: string;
+  tint: string;
+  labelColor: string;
+}) {
+  return (
+    <View style={styles.weeklyCell}>
+      <Text style={[styles.weeklyValue, { color: tint }]}>{value}</Text>
+      <Text style={[styles.weeklyLabel, { color: labelColor }]}>{label}</Text>
+    </View>
+  );
+}
 
 /** Top-level Profile tab — stats, quiet hours, notifications, about. */
 export default function ProfileScreen() {
@@ -42,6 +67,7 @@ export default function ProfileScreen() {
   const habitualCount = behaviors.filter(
     (b) => deriveStage(b.level, getStreak(b.id)) === 'habitual'
   ).length;
+  const weekly = computeWeeklySummary(behaviors, checkIns);
 
   const stats: { value: string | number; label: string }[] = [
     { value: activeStates.length, label: 'Active states' },
@@ -112,6 +138,48 @@ export default function ProfileScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + Space.xxl }]}>
         <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
+      </View>
+
+      <View
+        style={[
+          styles.weeklyCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+        accessibilityLabel={`This week: ${weekly.caught} caught, ${weekly.tried} tried, ${weekly.checkIns} total check-ins, ${weekly.untouched} states untouched.`}
+      >
+        <Text style={[styles.weeklyTitle, { color: colors.text }]}>
+          This week
+        </Text>
+        <View style={styles.weeklyGrid}>
+          <WeeklyMetric
+            value={weekly.caught}
+            label="Caught"
+            tint={colors.tint}
+            labelColor={colors.textMuted}
+          />
+          <WeeklyMetric
+            value={weekly.tried}
+            label="Tried"
+            tint={colors.text}
+            labelColor={colors.textMuted}
+          />
+          <WeeklyMetric
+            value={weekly.checkIns}
+            label="Total check-ins"
+            tint={colors.text}
+            labelColor={colors.textMuted}
+          />
+          <WeeklyMetric
+            value={weekly.untouched}
+            label="States untouched"
+            tint={
+              weekly.untouched > 0 && activeStates.length > 0
+                ? colors.warning
+                : colors.text
+            }
+            labelColor={colors.textMuted}
+          />
+        </View>
       </View>
 
       <View style={styles.statsGrid}>
@@ -241,6 +309,33 @@ const styles = StyleSheet.create({
   title: {
     ...Type.display2,
     fontWeight: '700',
+  },
+  weeklyCard: {
+    marginHorizontal: Space.lg,
+    marginBottom: Space.lg,
+    padding: Space.lg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Space.md,
+  },
+  weeklyTitle: {
+    ...Type.bodyBold,
+  },
+  weeklyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: Space.md,
+  },
+  weeklyCell: {
+    width: '50%',
+    gap: Space.xxs,
+  },
+  weeklyValue: {
+    ...Type.display2,
+    fontWeight: '700',
+  },
+  weeklyLabel: {
+    ...Type.caption,
   },
   statsGrid: {
     flexDirection: 'row',

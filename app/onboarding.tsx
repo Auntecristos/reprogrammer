@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Type, Space, Radius } from '@/constants/theme';
 import useStore from '@/store/useStore';
@@ -8,7 +9,7 @@ import { Behavior } from '@/types';
 import { generateUUID } from '@/utils/uuid';
 import { scheduleForBehavior } from '@/services/notifications';
 import { INITIAL_LEVEL, INITIAL_LAST_LEVELUP_STREAK } from '@/services/levels';
-import { featuredTemplates } from '@/services/library-content';
+import { featuredTemplates, LIBRARY_GUIDES } from '@/services/library-content';
 import { ONBOARDING_RULES } from '@/services/ground-rules';
 import { useContentModals } from '@/components/library/content-modals-provider';
 
@@ -23,6 +24,14 @@ export default function OnboardingScreen() {
   const { addBehavior, setOnboarded, updateAppProfile } = useStore();
   const { openGuide } = useContentModals();
   const [step, setStep] = useState<Step>('splash');
+  // Brief loader between picking a template and the guide modal opening
+  // so the research-grounded read doesn't feel like "another popup."
+  // Shows the guide title + estimated read time for ~600ms.
+  const [pendingGuide, setPendingGuide] = useState<{
+    title: string;
+    minutes: number;
+  } | null>(null);
+  const reduceMotion = useReducedMotion();
 
   // The rules / templates screens need to clear the status bar; the splash
   // is centered so it doesn't.
@@ -54,9 +63,19 @@ export default function OnboardingScreen() {
     await setOnboarded(true);
     // Open the paired guide over the dashboard so onboarding ends in a
     // research-grounded read, not a chore-list. Falls back silently if the
-    // chosen template has no guide attached.
+    // chosen template has no guide attached. Reduce Motion skips the brief
+    // intro loader and opens the guide straight away.
     if (template.libraryGuideId) {
-      openGuide(template.libraryGuideId);
+      const guide = LIBRARY_GUIDES.find((g) => g.id === template.libraryGuideId);
+      if (!guide || reduceMotion) {
+        openGuide(template.libraryGuideId);
+        return;
+      }
+      setPendingGuide({ title: guide.title, minutes: guide.estimatedMinutes });
+      setTimeout(() => {
+        openGuide(template.libraryGuideId!);
+        setPendingGuide(null);
+      }, 600);
     }
   };
 
@@ -149,12 +168,13 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.content, { paddingTop: contentPaddingTop }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Pick a state to start</Text>
-        <Text style={[styles.description, { color: colors.textMuted }]}>
-          One state. Get it to automatic before adding another.
-        </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.content, { paddingTop: contentPaddingTop }]}>
+          <Text style={[styles.title, { color: colors.text }]}>Pick a state to start</Text>
+          <Text style={[styles.description, { color: colors.textMuted }]}>
+            One state. Get it to automatic before adding another.
+          </Text>
 
         <View style={styles.templates}>
           {templates.map((template) => (
@@ -182,7 +202,38 @@ export default function OnboardingScreen() {
           </Text>
         </Pressable>
       </View>
-    </ScrollView>
+      </ScrollView>
+      {pendingGuide ? (
+        <Animated.View
+          entering={reduceMotion ? undefined : FadeIn.duration(220)}
+          style={[
+            styles.guideHandoff,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.tintMuted,
+            },
+          ]}
+          pointerEvents="none"
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={`Reading ${pendingGuide.title}, about ${pendingGuide.minutes} minutes.`}
+        >
+          <Text style={[styles.guideHandoffEyebrow, { color: colors.tint }]}>
+            Reading
+          </Text>
+          <Text
+            style={[styles.guideHandoffTitle, { color: colors.text }]}
+            numberOfLines={2}
+          >
+            {pendingGuide.title}
+          </Text>
+          <Text
+            style={[styles.guideHandoffMinutes, { color: colors.textMuted }]}
+          >
+            About {pendingGuide.minutes} min
+          </Text>
+        </Animated.View>
+      ) : null}
+    </View>
   );
 }
 
@@ -306,5 +357,27 @@ const styles = StyleSheet.create({
   inlineSkipText: {
     ...Type.body,
     textDecorationLine: 'underline',
+  },
+  guideHandoff: {
+    position: 'absolute',
+    left: '10%',
+    right: '10%',
+    top: '40%',
+    padding: Space.xxl,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Space.sm,
+    alignItems: 'center',
+  },
+  guideHandoffEyebrow: {
+    ...Type.micro,
+    textTransform: 'uppercase',
+  },
+  guideHandoffTitle: {
+    ...Type.display2,
+    textAlign: 'center',
+  },
+  guideHandoffMinutes: {
+    ...Type.caption,
   },
 });

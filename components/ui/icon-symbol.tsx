@@ -40,6 +40,11 @@ const MAPPING = {
   // Celebration / level-up
   'sparkles': 'auto-awesome',
   'arrow.right': 'arrow-forward',
+  // Bookmark indicator
+  'bookmark.fill': 'bookmark',
+  'bookmark': 'bookmark-outline',
+  // Sharing
+  'square.and.arrow.up': 'share',
 } as IconMapping;
 
 /**

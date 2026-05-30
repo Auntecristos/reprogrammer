@@ -86,7 +86,16 @@ export default function DashboardScreen() {
     }, [])
   );
 
+  // "Bookmarked" filter chip lives next to the grid; toggles the visible
+  // tile set without changing what counts as "active" for header copy or
+  // bulk-action eligibility. We keep both lists so the count/header stay
+  // honest (e.g. "3 active states" even when filtered to 1 bookmark).
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const activeBehaviors = behaviors.filter((b) => !b.hidden);
+  const hasBookmarks = activeBehaviors.some((b) => b.bookmarked);
+  const visibleBehaviors = bookmarkedOnly
+    ? activeBehaviors.filter((b) => b.bookmarked)
+    : activeBehaviors;
   const todayStart = startOfTodayMs();
   const todayEnd = todayStart + 24 * 60 * 60 * 1000;
   const today = todayWeekday();
@@ -633,8 +642,52 @@ export default function DashboardScreen() {
                 </Pressable>
               </View>
             ) : null}
+            {hasBookmarks ? (
+              <View style={styles.filterRow}>
+                <Pressable
+                  onPress={() => setBookmarkedOnly((v) => !v)}
+                  style={[
+                    styles.filterChip,
+                    bookmarkedOnly
+                      ? {
+                          backgroundColor: colors.tint,
+                          borderColor: colors.tint,
+                        }
+                      : {
+                          backgroundColor: colors.background,
+                          borderColor: colors.border,
+                        },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: bookmarkedOnly }}
+                  accessibilityLabel={
+                    bookmarkedOnly
+                      ? 'Showing bookmarks only. Tap to show all.'
+                      : 'Show bookmarks only'
+                  }
+                >
+                  <IconSymbol
+                    name={bookmarkedOnly ? 'bookmark.fill' : 'bookmark'}
+                    size={14}
+                    color={bookmarkedOnly ? colors.textOnBrand : colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      {
+                        color: bookmarkedOnly
+                          ? colors.textOnBrand
+                          : colors.text,
+                      },
+                    ]}
+                  >
+                    Bookmarked
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.grid}>
-              {activeBehaviors.map((b) => (
+              {visibleBehaviors.map((b) => (
                 <StateTile
                 key={b.id}
                 behavior={b}
@@ -909,14 +962,23 @@ function StateTile({
           >
             {behavior.title}
           </Text>
-          {streak > 0 && (
-            <View style={styles.streakBadge}>
-              <IconSymbol name="flame.fill" size={12} color={colors.warning} />
-              <Text style={[styles.streakNumber, { color: colors.warning }]}>
-                {streak}
-              </Text>
-            </View>
-          )}
+          <View style={styles.tileBadges}>
+            {behavior.bookmarked ? (
+              <IconSymbol
+                name="bookmark.fill"
+                size={12}
+                color={colors.tint}
+              />
+            ) : null}
+            {streak > 0 ? (
+              <View style={styles.streakBadge}>
+                <IconSymbol name="flame.fill" size={12} color={colors.warning} />
+                <Text style={[styles.streakNumber, { color: colors.warning }]}>
+                  {streak}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.tileFooter}>
@@ -1192,11 +1254,31 @@ const styles = StyleSheet.create({
     ...Type.bodyBold,
     flex: 1,
   },
+  tileBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs,
+  },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
   },
+  filterRow: {
+    flexDirection: 'row',
+    gap: Space.sm,
+    marginBottom: Space.md,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs,
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+  },
+  filterChipText: { ...Type.caption, fontWeight: '600' },
   streakNumber: {
     ...Type.caption,
     fontWeight: '700',
