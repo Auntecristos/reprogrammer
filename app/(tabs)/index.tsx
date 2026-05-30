@@ -81,9 +81,20 @@ export default function DashboardScreen() {
       c.at < todayEnd &&
       (c.result === 'yes' || c.result === 'tried')
   ).length;
-  const todaysAttemptsCount = reminderAttempts.filter(
+  const todaysAttempts = reminderAttempts.filter(
     (a) => a.scheduledFor >= todayStart && a.scheduledFor < todayEnd && a.phase === 'initial'
+  );
+  const todaysAttemptsCount = todaysAttempts.length;
+  const nowMs = Date.now();
+  const todaysRemaining = Math.max(0, todaysAttemptsCount - todaysCheckInsCount);
+  // A remaining attempt is "pending" if it hasn't fired yet; "missed" if it
+  // has fired (scheduledFor <= now) and the user hasn't checked it in.
+  const todaysPending = todaysAttempts.filter(
+    (a) => a.scheduledFor > nowMs
   ).length;
+  const todaysMissed = Math.max(0, todaysRemaining - todaysPending);
+  const allCaughtUp =
+    todaysAttemptsCount > 0 && todaysCheckInsCount >= todaysAttemptsCount;
 
   const handleCreate = () => router.push('/create');
   const handleOpenProfile = () => router.push('/(tabs)/profile');
@@ -213,9 +224,13 @@ export default function DashboardScreen() {
     );
   };
 
+  const lapseSnoozedRecently =
+    appProfile.lastLapseSnoozedAt != null &&
+    Date.now() - appProfile.lastLapseSnoozedAt < RELAPSE_BANNER_TTL_MS;
   const showRelapseBanner =
     appProfile.lastLapseAt != null &&
     appProfile.lastLapseAcknowledged !== true &&
+    !lapseSnoozedRecently &&
     Date.now() - appProfile.lastLapseAt < RELAPSE_BANNER_TTL_MS;
 
   const handleOpenRelapseGuide = () => {
@@ -225,6 +240,10 @@ export default function DashboardScreen() {
 
   const handleDismissRelapseBanner = () => {
     void updateAppProfile({ lastLapseAcknowledged: true });
+  };
+
+  const handleSnoozeRelapseBanner = () => {
+    void updateAppProfile({ lastLapseSnoozedAt: Date.now() });
   };
 
   return (
@@ -264,7 +283,11 @@ export default function DashboardScreen() {
               <Text style={[styles.dateText, { color: colors.text }]}>{formatToday()}</Text>
               {todaysAttemptsCount > 0 ? (
                 <Text style={[styles.progressText, { color: colors.textMuted }]}>
-                  {todaysCheckInsCount} of {todaysAttemptsCount} practiced today
+                  {todaysCheckInsCount} of {todaysAttemptsCount} today
+                  {todaysMissed > 0 ? ` (${todaysMissed} missed)` : ''}
+                  {todaysMissed === 0 && todaysPending > 0
+                    ? ` (${todaysPending} pending)`
+                    : ''}
                 </Text>
               ) : (
                 <Text style={[styles.progressText, { color: colors.textMuted }]}>
@@ -273,6 +296,19 @@ export default function DashboardScreen() {
                 </Text>
               )}
             </View>
+            {activeBehaviors.length >= 2 ? (
+              <Pressable
+                onPress={() => setSelectMode(true)}
+                style={[
+                  styles.headerSecondaryButton,
+                  { backgroundColor: colors.surfaceMuted },
+                ]}
+                accessibilityLabel="Select states for bulk actions"
+                accessibilityHint="Tap to enter selection mode. Long-press a tile also works."
+              >
+                <IconSymbol name="checkmark" size={18} color={colors.text} />
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={handleCreate}
               style={[styles.addButton, { backgroundColor: colors.tint }]}
@@ -285,6 +321,30 @@ export default function DashboardScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.gridScroll}>
+        {allCaughtUp ? (
+          <View
+            style={[
+              styles.allCaughtUpCard,
+              {
+                backgroundColor: colors.tintSoft,
+                borderColor: colors.tintCelebrate,
+              },
+            ]}
+            accessibilityLabel="All caught up for today"
+          >
+            <IconSymbol name="flame.fill" size={24} color={colors.tintCelebrate} />
+            <View style={styles.allCaughtUpBody}>
+              <Text style={[styles.allCaughtUpTitle, { color: colors.text }]}>
+                All caught up today.
+              </Text>
+              <Text
+                style={[styles.allCaughtUpSub, { color: colors.textMuted }]}
+              >
+                Every state checked in. The day did its work.
+              </Text>
+            </View>
+          </View>
+        ) : null}
         {appProfile.notificationsDenied ? (
           <View
             style={[
@@ -346,14 +406,28 @@ export default function DashboardScreen() {
                 A short read on how to come back without making it bigger than it is.
               </Text>
             </Pressable>
-            <Pressable
-              onPress={handleDismissRelapseBanner}
-              style={styles.relapseBannerDismiss}
-              hitSlop={8}
-              accessibilityLabel="Dismiss restart prompt"
-            >
-              <IconSymbol name="xmark" size={16} color={colors.textMuted} />
-            </Pressable>
+            <View style={styles.relapseBannerActions}>
+              <Pressable
+                onPress={handleSnoozeRelapseBanner}
+                style={styles.relapseBannerSnooze}
+                hitSlop={8}
+                accessibilityLabel="Hide this banner for a week"
+              >
+                <Text
+                  style={[styles.relapseBannerSnoozeText, { color: colors.textMuted }]}
+                >
+                  Hide
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleDismissRelapseBanner}
+                style={styles.relapseBannerDismiss}
+                hitSlop={8}
+                accessibilityLabel="Dismiss restart prompt"
+              >
+                <IconSymbol name="xmark" size={16} color={colors.textMuted} />
+              </Pressable>
+            </View>
           </View>
         ) : null}
         {activeBehaviors.length === 0 ? (
@@ -677,6 +751,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  /** Smaller secondary button slotted between the date and the + button. */
+  headerSecondaryButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerCenter: {
     flex: 1,
   },
@@ -733,6 +815,32 @@ const styles = StyleSheet.create({
   relapseBannerDismiss: {
     padding: Space.xs,
   },
+  relapseBannerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs,
+  },
+  relapseBannerSnooze: {
+    paddingHorizontal: Space.sm,
+    paddingVertical: Space.xs,
+  },
+  relapseBannerSnoozeText: {
+    ...Type.caption,
+    fontWeight: '600',
+  },
+  /** Calm success card shown when every state for today has been checked in. */
+  allCaughtUpCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.md,
+    padding: Space.md,
+    marginBottom: Space.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+  },
+  allCaughtUpBody: { flex: 1, gap: Space.xxs },
+  allCaughtUpTitle: { ...Type.bodyBold },
+  allCaughtUpSub: { ...Type.caption },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

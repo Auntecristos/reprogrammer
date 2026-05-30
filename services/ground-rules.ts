@@ -5,6 +5,19 @@ export interface GroundRule {
   citation: string;
 }
 
+/**
+ * The three rules shown during onboarding — the ones that pass an
+ * actual gut check for someone deciding whether this app fits them.
+ * The other two (`rule-no-magic`, `rule-timeline`) live in
+ * `EXTENDED_GROUND_RULES` and surface under Profile → About so the
+ * onboarding flow doesn't drown the user in caveats up front.
+ */
+export const ONBOARDING_GROUND_RULES_IDS = [
+  'rule-time',
+  'rule-silence',
+  'rule-exercise',
+] as const;
+
 export const GROUND_RULES: GroundRule[] = [
   {
     id: 'rule-time',
@@ -37,3 +50,13 @@ export const GROUND_RULES: GroundRule[] = [
     citation: 'Polivy & Herman, 2002 — False Hope Syndrome',
   },
 ];
+
+/** The three rules shown in onboarding. */
+export const ONBOARDING_RULES: GroundRule[] = GROUND_RULES.filter((r) =>
+  (ONBOARDING_GROUND_RULES_IDS as readonly string[]).includes(r.id)
+);
+
+/** Rules surfaced under Profile → About (everything not in onboarding). */
+export const EXTENDED_RULES: GroundRule[] = GROUND_RULES.filter(
+  (r) => !(ONBOARDING_GROUND_RULES_IDS as readonly string[]).includes(r.id)
+);

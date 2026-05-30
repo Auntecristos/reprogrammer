@@ -71,6 +71,12 @@ export interface AppProfile {
   lastLapseAt?: number;
   /** Whether the user has dismissed the compassionate restart banner for the last lapse. */
   lastLapseAcknowledged?: boolean;
+  /**
+   * Timestamp at which the user snoozed the lapse banner. The banner stays
+   * hidden until 7 days after this timestamp (separate from acknowledged,
+   * which dismisses permanently for the current lapse event).
+   */
+  lastLapseSnoozedAt?: number;
   /** Global do-not-ping window (e.g., overnight). Times in "HH:MM" 24-hour form. */
   quietHours?: { from: string; to: string };
   /** Set if the user declined system notification permissions. */

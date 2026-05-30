@@ -50,15 +50,18 @@ Notifications.setNotificationHandler({
 
 export async function setupNotificationCategory(): Promise<void> {
   if (!categoryRegistered) {
+    // Action labels mirror the in-app check-in screen — Caught it / Missed
+    // / Pause today — so users see the same words whether they respond from
+    // the notification or open the app.
     await Notifications.setNotificationCategoryAsync(CHECKIN_CATEGORY, [
       {
         identifier: ACTION_YES,
-        buttonTitle: 'Check-in',
+        buttonTitle: 'Caught it',
         options: { opensAppToForeground: false },
       },
       {
         identifier: ACTION_NO,
-        buttonTitle: 'Snooze',
+        buttonTitle: 'Missed',
         options: { opensAppToForeground: false, isDestructive: false },
       },
       {

@@ -29,7 +29,10 @@ export default function CheckInScreen() {
   const { behaviors, addCheckIn } = useStore();
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+  const [showTriedHint, setShowTriedHint] = useState(false);
   const draftWriteTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedFadeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const behavior = useMemo(
     () => behaviors.find((b) => b.id === (behaviorId as string)),
@@ -53,18 +56,28 @@ export default function CheckInScreen() {
   }, [attemptId]);
 
   // Debounce-write the draft as the user types.
+  // 500ms gives fast typists room to coalesce and surfaces the "Saved"
+  // microcopy at a cadence that actually reassures.
   useEffect(() => {
     if (typeof attemptId !== 'string') return;
     if (draftWriteTimeout.current) clearTimeout(draftWriteTimeout.current);
     draftWriteTimeout.current = setTimeout(() => {
       if (note) {
-        void AsyncStorage.setItem(draftKey(attemptId), note);
+        void AsyncStorage.setItem(draftKey(attemptId), note).then(() => {
+          setShowSavedIndicator(true);
+          if (savedFadeTimeout.current) clearTimeout(savedFadeTimeout.current);
+          savedFadeTimeout.current = setTimeout(
+            () => setShowSavedIndicator(false),
+            2000
+          );
+        });
       } else {
         void AsyncStorage.removeItem(draftKey(attemptId));
       }
-    }, 200);
+    }, 500);
     return () => {
       if (draftWriteTimeout.current) clearTimeout(draftWriteTimeout.current);
+      if (savedFadeTimeout.current) clearTimeout(savedFadeTimeout.current);
     };
   }, [note, attemptId]);
 
@@ -106,9 +119,12 @@ export default function CheckInScreen() {
   }
 
   const isEliminate = behavior.kind === 'eliminate';
-  const yesLabel = isEliminate ? 'Caught It' : 'Check-in';
-  const triedLabel = isEliminate ? 'Struggled' : 'Tried';
-  const noLabel = isEliminate ? "Didn't Notice" : 'Snooze';
+  // Consistent labels across kinds — "Caught it / Tried / Missed" reads
+  // the same regardless of whether you're adopting or eliminating, and the
+  // previous "Snooze" label on Adopt was confused for a notification snooze.
+  const yesLabel = 'Caught it';
+  const triedLabel = 'Tried';
+  const noLabel = 'Missed';
   const messageBody = isEliminate ? `CATCH IT — ${behavior.pingMessage}` : behavior.pingMessage;
 
   return (
@@ -147,23 +163,43 @@ export default function CheckInScreen() {
           >
             <Text style={styles.buttonText}>{yesLabel}</Text>
           </Pressable>
-          <Pressable
-            onPress={() => handleResponse('tried')}
-            disabled={isSubmitting}
-            style={[
-              styles.button,
-              styles.triedButton,
-              {
-                borderColor: colors.warning,
-                backgroundColor: colors.warningSoft,
-                opacity: isSubmitting ? 0.5 : 1,
-              },
-            ]}
-            accessibilityLabel={triedLabel}
-            accessibilityHint="Showing up counts — use when you engaged but didn't fully complete."
-          >
-            <Text style={[styles.buttonText, { color: colors.warning }]}>{triedLabel}</Text>
-          </Pressable>
+          <View style={styles.triedRow}>
+            <Pressable
+              onPress={() => handleResponse('tried')}
+              disabled={isSubmitting}
+              style={[
+                styles.button,
+                styles.triedButton,
+                {
+                  borderColor: colors.warning,
+                  backgroundColor: colors.warningSoft,
+                  opacity: isSubmitting ? 0.5 : 1,
+                  flex: 1,
+                },
+              ]}
+              accessibilityLabel={triedLabel}
+              accessibilityHint="Showing up counts — use when you engaged but didn't fully complete."
+            >
+              <Text style={[styles.buttonText, { color: colors.warning }]}>{triedLabel}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setShowTriedHint((v) => !v)}
+              style={[
+                styles.helpButton,
+                { borderColor: colors.warning, backgroundColor: colors.warningSoft },
+              ]}
+              accessibilityLabel="Why Tried?"
+              accessibilityHint="Shows what Tried means for your streak"
+            >
+              <Text style={[styles.helpButtonText, { color: colors.warning }]}>?</Text>
+            </Pressable>
+          </View>
+          {showTriedHint ? (
+            <Text style={[styles.triedHint, { color: colors.textMuted }]}>
+              Showing up counts. Tried preserves your streak — use it when you
+              engaged but didn&apos;t fully complete.
+            </Text>
+          ) : null}
           <Pressable
             onPress={() => handleResponse('no')}
             disabled={isSubmitting}
@@ -178,7 +214,14 @@ export default function CheckInScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.label, { color: colors.text }]}>Add a note (optional)</Text>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: colors.text }]}>Add a note (optional)</Text>
+          {showSavedIndicator ? (
+            <Text style={[styles.savedIndicator, { color: colors.textMuted }]}>
+              Saved
+            </Text>
+          ) : null}
+        </View>
         <TextInput
           style={[styles.noteInput, { color: colors.text, borderColor: colors.border }]}
           placeholder="How did it go?"
@@ -234,6 +277,27 @@ const styles = StyleSheet.create({
   triedButton: {
     borderWidth: 2,
   },
+  triedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+  },
+  helpButton: {
+    width: 44,
+    height: 44,
+    borderWidth: 2,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpButtonText: {
+    ...Type.bodyBold,
+    fontWeight: '800',
+  },
+  triedHint: {
+    ...Type.caption,
+    marginTop: Space.xs,
+  },
   noButton: {
     borderWidth: 2,
     backgroundColor: 'transparent',
@@ -242,9 +306,17 @@ const styles = StyleSheet.create({
     ...Type.h2,
     color: 'white',
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Space.sm,
+  },
   label: {
     ...Type.bodyBold,
-    marginBottom: Space.sm,
+  },
+  savedIndicator: {
+    ...Type.caption,
   },
   noteInput: {
     borderWidth: 1,
