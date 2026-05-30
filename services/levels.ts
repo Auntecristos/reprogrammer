@@ -63,6 +63,31 @@ export function applyLapse(b: Behavior): Behavior {
   };
 }
 
+/**
+ * The `AppProfile` patch the dashboard relies on to show the relapse banner.
+ * Pulled out as a pure helper so it can be unit-tested in Node — the call
+ * site in `handleCheckInResponse` lives in services/notifications.ts which
+ * pulls in `expo-notifications` and isn't tx-runnable without a mock layer.
+ * If a future tweak adds another field, this is the one place that needs
+ * to change.
+ */
+export interface LapseProfilePatch {
+  lastLapseAt: number;
+  lastLapseBehaviorId: string;
+  lastLapseAcknowledged: false;
+}
+
+export function buildLapseProfilePatch(
+  behaviorId: string,
+  now: number = Date.now()
+): LapseProfilePatch {
+  return {
+    lastLapseAt: now,
+    lastLapseBehaviorId: behaviorId,
+    lastLapseAcknowledged: false,
+  };
+}
+
 export function deriveStage(level: number, streak: number): Stage {
   if (level >= 4 || streak >= 28) return 'habitual';
   if (level >= 2 || streak >= 7) return 'in_progress';

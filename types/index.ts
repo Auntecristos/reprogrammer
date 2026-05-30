@@ -69,6 +69,13 @@ export interface AppProfile {
   userBio?: string;
   /** Timestamp of the most recent lapse (3-no auto-pause). */
   lastLapseAt?: number;
+  /**
+   * Behavior that triggered the most recent lapse. Used by the dashboard
+   * relapse banner to name the specific state and offer a one-tap resume.
+   * Single-id (not list) — if multiple lapse the same day, most-recent wins,
+   * trading a small loss of fidelity for a much simpler banner.
+   */
+  lastLapseBehaviorId?: string;
   /** Whether the user has dismissed the compassionate restart banner for the last lapse. */
   lastLapseAcknowledged?: boolean;
   /**
@@ -81,4 +88,10 @@ export interface AppProfile {
   quietHours?: { from: string; to: string };
   /** Set if the user declined system notification permissions. */
   notificationsDenied?: boolean;
+  /**
+   * Cleared after the user has tapped a tile (or otherwise dismissed the
+   * onboarding tooltip) once. Drives the one-shot "Tap a state to check in"
+   * coachmark for users who skipped the regular onboarding.
+   */
+  showFirstTilePrompt?: boolean;
 }

@@ -11,6 +11,7 @@ import {
   applyLevelUp,
   applyLapse,
   levelUpTransition,
+  buildLapseProfilePatch,
   LAPSE_NO_THRESHOLD,
 } from './levels';
 import {
@@ -36,6 +37,7 @@ let channelRegistered = false;
 
 export const CHECKIN_CATEGORY = 'behavior_checkin';
 export const ACTION_YES = 'CHECKIN_YES';
+export const ACTION_TRIED = 'CHECKIN_TRIED';
 export const ACTION_NO = 'CHECKIN_NO';
 export const ACTION_OFF = 'CHECKIN_OFF';
 
@@ -51,13 +53,22 @@ Notifications.setNotificationHandler({
 
 export async function setupNotificationCategory(): Promise<void> {
   if (!categoryRegistered) {
-    // Action labels mirror the in-app check-in screen — Caught it / Missed
-    // / Pause today — so users see the same words whether they respond from
-    // the notification or open the app.
+    // Action labels mirror the in-app check-in screen exactly — Caught it
+    // / Tried / Missed / Pause today — so the vocabulary is consistent
+    // whether the user responds from the notification or opens the app.
+    // iOS allows up to 4 inline actions before folding into a "More" menu,
+    // and Tried is too core to the three-way philosophy to leave off the
+    // notification surface. Order matches the in-app button order so the
+    // muscle memory transfers.
     await Notifications.setNotificationCategoryAsync(CHECKIN_CATEGORY, [
       {
         identifier: ACTION_YES,
         buttonTitle: 'Caught it',
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: ACTION_TRIED,
+        buttonTitle: 'Tried',
         options: { opensAppToForeground: false },
       },
       {
@@ -303,8 +314,14 @@ export async function handleNotificationAction(
     return;
   }
 
-  const result: 'yes' | 'no' | null =
-    actionId === ACTION_YES ? 'yes' : actionId === ACTION_NO ? 'no' : null;
+  const result: 'yes' | 'tried' | 'no' | null =
+    actionId === ACTION_YES
+      ? 'yes'
+      : actionId === ACTION_TRIED
+        ? 'tried'
+        : actionId === ACTION_NO
+          ? 'no'
+          : null;
   if (!result) return;
 
   const checkIn = {
@@ -382,10 +399,10 @@ export async function handleCheckInResponse(
     });
     await cancelForBehavior(behaviorId);
     // Surface the compassionate restart banner on next dashboard render.
-    await store.updateAppProfile({
-      lastLapseAt: Date.now(),
-      lastLapseAcknowledged: false,
-    });
+    // Naming the behavior lets the banner say "You paused Morning Pages"
+    // and offer a one-tap resume targeted at this state, rather than the
+    // earlier generic "Yesterday was hard" copy.
+    await store.updateAppProfile(buildLapseProfilePatch(behaviorId));
     return;
   }
 

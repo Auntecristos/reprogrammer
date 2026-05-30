@@ -18,6 +18,7 @@ import {
   applyLapse,
   deriveStage,
   levelUpTransition,
+  buildLapseProfilePatch,
   LEVEL_MULTIPLIERS,
   EFFECTIVE_INTERVAL_CAP_MIN,
   MIN_INTERVAL_FLOOR_MIN,
@@ -126,6 +127,34 @@ const tEdge = levelUpTransition(1, 1);
 expect(
   tEdge.fromStage === 'starting',
   'streak 1 — yesterdayStreak clamps at 0, fromStage = starting'
+);
+
+// buildLapseProfilePatch — guards the AppProfile patch shape the
+// dashboard relapse banner consumes. Catches accidental field drops in
+// future refactors of handleCheckInResponse.
+const lapsePatch = buildLapseProfilePatch('behavior-42', 1717000000000);
+expect(
+  lapsePatch.lastLapseBehaviorId === 'behavior-42',
+  'lapse patch carries the lapsed behaviorId so the banner can name it'
+);
+expect(
+  lapsePatch.lastLapseAt === 1717000000000,
+  'lapse patch carries the explicit `now` timestamp for deterministic tests'
+);
+expect(
+  lapsePatch.lastLapseAcknowledged === false,
+  'lapse patch resets the acknowledged flag — the banner must show again'
+);
+expect(
+  Object.keys(lapsePatch).length === 3,
+  'lapse patch only carries the three fields; any new field is intentional'
+);
+
+const lapsePatchDefault = buildLapseProfilePatch('b1');
+expect(
+  typeof lapsePatchDefault.lastLapseAt === 'number' &&
+    lapsePatchDefault.lastLapseAt > 0,
+  'lapse patch defaults `now` to Date.now() when omitted'
 );
 
 if (failures === 0) {
