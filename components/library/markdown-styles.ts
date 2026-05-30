@@ -6,18 +6,25 @@ import {
   type ThemeColors,
 } from '@/constants/theme';
 
+/**
+ * Long-form magazine body. Slightly taller line-height than `Type.body`
+ * because guide content is meant to be READ — UI surfaces use `Type.body`
+ * (15/22), guide bodies use this (16/26).
+ */
+const GUIDE_BODY = { fontSize: 16, lineHeight: 26, fontWeight: '400' as const };
+
 export function createMarkdownStyles(colors: ThemeColors) {
   return StyleSheet.create({
     body: {
       color: colors.text,
-      ...Type.body,
+      ...GUIDE_BODY,
     },
     paragraph: {
       marginTop: 0,
       marginBottom: Space.md,
     },
     heading1: {
-      ...Type.h1,
+      ...Type.display2,
       color: colors.text,
       marginTop: Space.lg,
       marginBottom: Space.sm,
@@ -46,15 +53,26 @@ export function createMarkdownStyles(colors: ThemeColors) {
       color: colors.tint,
       textDecorationLine: 'underline',
     },
+    /**
+     * Pullquote — `> *italic body*` in source. The italicized phrase inside
+     * gets the editorial treatment: tintMuted left border, larger size,
+     * subtle background. The em inside takes over for italic; this block
+     * sets the frame.
+     */
     blockquote: {
       borderLeftWidth: 3,
-      borderLeftColor: colors.tint,
-      backgroundColor: colors.surfaceMuted,
-      paddingLeft: Space.md,
+      borderLeftColor: colors.tintMuted,
+      backgroundColor: colors.tintSoft,
+      paddingLeft: Space.lg,
       paddingRight: Space.md,
-      paddingVertical: Space.sm,
-      marginVertical: Space.md,
+      paddingVertical: Space.md,
+      marginVertical: Space.lg,
       borderRadius: Radius.sm,
+      // The pull-quote body itself reads a hair larger than guide body.
+      fontSize: 17,
+      lineHeight: 28,
+      fontStyle: 'italic',
+      color: colors.text,
     },
     bullet_list: {
       marginVertical: Space.sm,

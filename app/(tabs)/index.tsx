@@ -1,6 +1,16 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, Linking } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+
+/** Pressable that participates in Reanimated style updates (for tile press). */
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Colors,
@@ -11,7 +21,7 @@ import {
 } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import useStore from '@/store/useStore';
-import { useCallback, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useState, type ComponentProps } from 'react';
 import { Alert } from 'react-native';
 import type { Behavior } from '@/types';
 import { deriveStage, stageLabel } from '@/services/levels';
@@ -322,28 +332,7 @@ export default function DashboardScreen() {
 
       <ScrollView contentContainerStyle={styles.gridScroll}>
         {allCaughtUp ? (
-          <View
-            style={[
-              styles.allCaughtUpCard,
-              {
-                backgroundColor: colors.tintSoft,
-                borderColor: colors.tintCelebrate,
-              },
-            ]}
-            accessibilityLabel="All caught up for today"
-          >
-            <IconSymbol name="flame.fill" size={24} color={colors.tintCelebrate} />
-            <View style={styles.allCaughtUpBody}>
-              <Text style={[styles.allCaughtUpTitle, { color: colors.text }]}>
-                All caught up today.
-              </Text>
-              <Text
-                style={[styles.allCaughtUpSub, { color: colors.textMuted }]}
-              >
-                Every state checked in. The day did its work.
-              </Text>
-            </View>
-          </View>
+          <AllCaughtUpCard colors={colors} />
         ) : null}
         {appProfile.notificationsDenied ? (
           <View
@@ -562,6 +551,51 @@ export default function DashboardScreen() {
   );
 }
 
+/**
+ * Calm success card shown on Today when every scheduled attempt has a
+ * check-in. Entrance: 200ms fade-in + a single 600ms scale-pulse so the
+ * card feels alive without becoming an interrupting animation.
+ */
+function AllCaughtUpCard({ colors }: { colors: ThemeColors }) {
+  const scale = useSharedValue(1);
+  // Kick off a one-shot pulse on mount. withSequence runs the scale up then
+  // back to rest; no looping. The FadeIn props on the Animated.View handle
+  // the opacity entry independently.
+  useEffect(() => {
+    scale.value = withSequence(
+      withTiming(1.04, { duration: 280 }),
+      withTiming(1, { duration: 320 })
+    );
+  }, [scale]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <Animated.View
+      entering={FadeIn.duration(200)}
+      style={[
+        styles.allCaughtUpCard,
+        pulseStyle,
+        {
+          backgroundColor: colors.tintSoft,
+          borderColor: colors.tintCelebrate,
+        },
+      ]}
+      accessibilityLabel="All caught up for today"
+    >
+      <IconSymbol name="flame.fill" size={24} color={colors.tintCelebrate} />
+      <View style={styles.allCaughtUpBody}>
+        <Text style={[styles.allCaughtUpTitle, { color: colors.text }]}>
+          All caught up today.
+        </Text>
+        <Text style={[styles.allCaughtUpSub, { color: colors.textMuted }]}>
+          Every state checked in. The day did its work.
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 interface BulkActionButtonProps {
   label: string;
   icon: ComponentProps<typeof IconSymbol>['name'];
@@ -626,13 +660,28 @@ function StateTile({
       : ', not selected'
     : '';
 
+  // Press feedback: tile scales 1.0 → 0.97 on press-in, springs back on
+  // press-out. Runs on the UI thread via Reanimated; cancels cleanly if
+  // the gesture turns into a long-press without releasing.
+  const pressScale = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       onLongPress={onLongPress}
+      onPressIn={() => {
+        pressScale.value = withTiming(0.97, { duration: 90 });
+      }}
+      onPressOut={() => {
+        pressScale.value = withTiming(1, { duration: 140 });
+      }}
       delayLongPress={350}
       style={[
         styles.tile,
+        pressStyle,
         {
           backgroundColor: isEnabled ? colors.stateEnabledBg : colors.stateDisabledBg,
           overflow: 'hidden',
@@ -705,7 +754,7 @@ function StateTile({
           ) : null}
         </View>
       ) : null}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
