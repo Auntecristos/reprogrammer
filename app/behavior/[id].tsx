@@ -37,7 +37,14 @@ export default function BehaviorDetailScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { id } = useLocalSearchParams();
-  const { behaviors, checkIns, getStreak, deleteBehavior, updateBehavior } = useStore();
+  const {
+    behaviors,
+    checkIns,
+    getStreak,
+    deleteBehavior,
+    updateBehavior,
+    updateCheckIn,
+  } = useStore();
   const { openGuide } = useContentModals();
   const [, setRefresh] = useState({});
 
@@ -106,6 +113,32 @@ export default function BehaviorDetailScreen() {
     } catch (error) {
       Alert.alert('Error', 'Failed to send test notification');
     }
+  };
+
+  /**
+   * Long-press a check-in row to change its result. Useful when the user
+   * tapped the wrong button on a notification action ("Missed" instead of
+   * "Caught it") and the streak got broken.
+   */
+  const handleCheckInLongPress = (checkInId: string, currentResult: 'yes' | 'tried' | 'no') => {
+    const options: { label: string; value: 'yes' | 'tried' | 'no' }[] = [
+      { label: 'Caught it', value: 'yes' },
+      { label: 'Tried', value: 'tried' },
+      { label: 'Missed', value: 'no' },
+    ];
+    Alert.alert(
+      'Change check-in result',
+      'This recomputes your streak.',
+      [
+        ...options
+          .filter((o) => o.value !== currentResult)
+          .map((o) => ({
+            text: o.label,
+            onPress: () => updateCheckIn(checkInId, o.value),
+          })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]
+    );
   };
 
   const isPaused = behavior.pausedUntil != null && behavior.pausedUntil > Date.now();
@@ -282,7 +315,11 @@ export default function BehaviorDetailScreen() {
               }[item.result];
 
               return (
-                <View
+                <Pressable
+                  onLongPress={() => handleCheckInLongPress(item.id, item.result)}
+                  delayLongPress={400}
+                  accessibilityLabel={`Check-in: ${resultStyle.glyph}, ${dateStr} ${timeStr}`}
+                  accessibilityHint="Long-press to change the result"
                   style={[
                     styles.checkInItem,
                     {
@@ -309,7 +346,7 @@ export default function BehaviorDetailScreen() {
                       {item.note}
                     </Text>
                   )}
-                </View>
+                </Pressable>
               );
             }}
           />

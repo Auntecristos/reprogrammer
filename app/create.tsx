@@ -45,13 +45,20 @@ export default function CreateScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { id } = useLocalSearchParams();
+  const { id, kind: kindParam } = useLocalSearchParams();
   const { behaviors, addBehavior, updateBehavior } = useStore();
 
   const editingBehavior = useMemo(
     () => (id ? behaviors.find(b => b.id === id as string) : null),
     [id, behaviors]
   );
+
+  // Initial kind: editing -> behavior.kind; otherwise honor the `kind` param
+  // (used by the "Create Adopt first" deep link from the Eliminate flow);
+  // otherwise default to adopt.
+  const initialKind: BehaviorKind =
+    editingBehavior?.kind ??
+    (kindParam === 'eliminate' ? 'eliminate' : 'adopt');
 
   const [title, setTitle] = useState(editingBehavior?.title || '');
   const [pingMessage, setPingMessage] = useState(editingBehavior?.pingMessage || '');
@@ -64,7 +71,7 @@ export default function CreateScreen() {
   const [activeDays, setActiveDays] = useState<number[]>(
     editingBehavior?.activeDays || [0, 1, 2, 3, 4, 5, 6]
   );
-  const [kind, setKind] = useState<BehaviorKind>(editingBehavior?.kind ?? 'adopt');
+  const [kind, setKind] = useState<BehaviorKind>(initialKind);
   const [replacementStateId, setReplacementStateId] = useState<string | undefined>(
     editingBehavior?.replacementStateId
   );
@@ -95,12 +102,19 @@ export default function CreateScreen() {
     if (effMin >= 60) {
       const h = Math.floor(effMin / 60);
       const m = Math.round(effMin % 60);
-      spacingLabel = m > 0 ? `${h}h ${m}m` : `${h}h`;
+      spacingLabel = m > 0 ? `${h} hours ${m} minutes` : `${h} ${h === 1 ? 'hour' : 'hours'}`;
     } else {
-      spacingLabel = `${Math.round(effMin)} min`;
+      spacingLabel = `${Math.round(effMin)} minutes`;
     }
-    const tail = effMin !== intervalMinutes ? ` (level ${level}, every ${intervalMinutes}m base)` : '';
-    return `~${totalPings} pings today, ~every ${spacingLabel}${tail}`;
+    // Plain-English preview. We intentionally don't surface "level" — that's
+    // an internal concept. If the streak-aware effective interval differs
+    // from the base, mention that reminders will space out as the streak
+    // grows; otherwise keep it terse.
+    const baseTail =
+      effMin !== intervalMinutes
+        ? ' As your streak grows, reminders space out.'
+        : '';
+    return `About ${totalPings} reminder${totalPings === 1 ? '' : 's'} today, every ${spacingLabel}.${baseTail}`;
   }, [startTime, endTime, intervalMinutes, editingBehavior?.level]);
 
   const handleTimeChange = (which: 'start' | 'end') => (
@@ -196,12 +210,24 @@ export default function CreateScreen() {
             borderColor: colors.tint,
           },
         ]}
+        accessibilityLabel={`${which === 'start' ? 'Start' : 'End'} time, ${display.time} ${display.period}`}
+        accessibilityHint="Tap to change"
       >
-        <Text style={[styles.timeChipText, { color: isOpen ? colors.textOnBrand : colors.text }]}>
-          {display.time}
-        </Text>
-        <Text style={[styles.timeChipPeriod, { color: isOpen ? colors.textOnBrand : colors.textMuted }]}>
-          {display.period}
+        <View style={styles.timeChipRow}>
+          <Text style={[styles.timeChipText, { color: isOpen ? colors.textOnBrand : colors.text }]}>
+            {display.time}
+          </Text>
+          <Text style={[styles.timeChipPeriod, { color: isOpen ? colors.textOnBrand : colors.textMuted }]}>
+            {display.period}
+          </Text>
+        </View>
+        <Text
+          style={[
+            styles.timeChipHint,
+            { color: isOpen ? colors.textOnBrand : colors.textMuted },
+          ]}
+        >
+          {isOpen ? 'Drag to adjust ▲' : 'Tap to change ▾'}
         </Text>
       </Pressable>
     );
@@ -256,9 +282,32 @@ export default function CreateScreen() {
             <Text style={[styles.rowLabel, { color: colors.text }]}>Replace with:</Text>
             <View style={styles.replacementChips}>
               {adoptStateOptions.length === 0 ? (
-                <Text style={[Type.caption, { color: colors.textMuted, flex: 1 }]}>
-                  No Adopt states yet — create one first.
-                </Text>
+                <Pressable
+                  onPress={() => {
+                    // Open a fresh Create modal pre-set to Adopt. On save the
+                    // user can navigate back here; React Navigation preserves
+                    // this form's local state in memory.
+                    router.push({ pathname: '/create', params: { kind: 'adopt' } });
+                  }}
+                  style={[
+                    styles.adoptFirstCard,
+                    { borderColor: colors.tint, backgroundColor: colors.tintSoft },
+                  ]}
+                  accessibilityLabel="Create an Adopt state first"
+                  accessibilityHint="Eliminate states need an Adopt replacement"
+                >
+                  <Text style={[styles.adoptFirstTitle, { color: colors.text }]}>
+                    Eliminate needs a replacement.
+                  </Text>
+                  <Text
+                    style={[styles.adoptFirstSub, { color: colors.textMuted }]}
+                  >
+                    Create your Adopt first — what you&apos;ll do instead.
+                  </Text>
+                  <Text style={[styles.adoptFirstCta, { color: colors.tint }]}>
+                    + New Adopt
+                  </Text>
+                </Pressable>
               ) : (
                 adoptStateOptions.map((b) => {
                   const active = replacementStateId === b.id;
@@ -481,10 +530,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 36,
   },
+  timeChipRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Space.xxs,
+  },
   timeChipPeriod: {
     ...Type.micro,
-    marginTop: 2,
     letterSpacing: 1,
+  },
+  // Small label under the time chip ("Tap to change ▾" or "Drag to adjust ▲")
+  // — makes the chip's affordance discoverable for the first-time user.
+  timeChipHint: {
+    ...Type.micro,
+    marginTop: Space.xs,
   },
   timeArrow: {
     ...Type.h1,
@@ -608,5 +667,21 @@ const styles = StyleSheet.create({
   replacementChipText: {
     ...Type.caption,
     fontWeight: '600',
+  },
+  // Inline affordance shown in the Eliminate flow when the user has no
+  // Adopt states to pick as a replacement — opens a fresh /create modal
+  // pre-selected as Adopt instead of leaving the user stuck.
+  adoptFirstCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderRadius: Radius.md,
+    padding: Space.md,
+    gap: Space.xs,
+  },
+  adoptFirstTitle: { ...Type.bodyBold },
+  adoptFirstSub: { ...Type.caption },
+  adoptFirstCta: {
+    ...Type.bodyBold,
+    marginTop: Space.xs,
   },
 });

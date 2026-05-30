@@ -9,7 +9,8 @@ import { generateUUID } from '@/utils/uuid';
 import { scheduleForBehavior } from '@/services/notifications';
 import { INITIAL_LEVEL, INITIAL_LAST_LEVELUP_STREAK } from '@/services/levels';
 import { featuredTemplates } from '@/services/library-content';
-import { GROUND_RULES } from '@/services/ground-rules';
+import { ONBOARDING_RULES } from '@/services/ground-rules';
+import { useContentModals } from '@/components/library/content-modals-provider';
 
 type Step = 'splash' | 'rules' | 'templates';
 
@@ -20,6 +21,7 @@ export default function OnboardingScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const { addBehavior, setOnboarded } = useStore();
+  const { openGuide } = useContentModals();
   const [step, setStep] = useState<Step>('splash');
 
   // The rules / templates screens need to clear the status bar; the splash
@@ -47,6 +49,12 @@ export default function OnboardingScreen() {
     await addBehavior(behavior);
     await scheduleForBehavior(behavior);
     await setOnboarded(true);
+    // Open the paired guide over the dashboard so onboarding ends in a
+    // research-grounded read, not a chore-list. Falls back silently if the
+    // chosen template has no guide attached.
+    if (template.libraryGuideId) {
+      openGuide(template.libraryGuideId);
+    }
   };
 
   const skipOnboarding = async () => {
@@ -81,10 +89,10 @@ export default function OnboardingScreen() {
         <View style={[styles.content, { paddingTop: contentPaddingTop }]}>
           <Text style={[styles.title, { color: colors.text }]}>Before you start</Text>
           <Text style={[styles.description, { color: colors.textMuted }]}>
-            Five rules that decide whether this works for you.
+            Three rules that decide whether this works for you.
           </Text>
 
-          {GROUND_RULES.map((rule, idx) => (
+          {ONBOARDING_RULES.map((rule, idx) => (
             <View
               key={rule.id}
               style={[
