@@ -31,6 +31,10 @@ export default function RootLayout() {
       router.replace('/onboarding');
     } else if (appProfile.hasOnboarded && pathname === '/onboarding') {
       router.replace('/(tabs)');
+    } else if (pathname === '/explore') {
+      // Profile lived at /(tabs)/explore in the previous build. Catch users
+      // arriving via an old deep link / bookmark and forward them.
+      router.replace('/(tabs)/profile');
     }
   }, [isHydrated, appProfile.hasOnboarded, pathname, router]);
 

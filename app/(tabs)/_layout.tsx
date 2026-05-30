@@ -25,18 +25,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: 'Today',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="states"
-        options={{
-          title: 'States',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="square.stack.fill" color={color} />
           ),
         }}
       />
@@ -47,18 +38,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
         }}
       />
-      {/*
-        Hide the old `explore` tab from the bar so we don't break navigation
-        for users on the previous build. The route still exists as a fallback
-        until the screens have fully migrated. `href: null` drops it from
-        URL routing; `tabBarButton: () => null` also removes the button from
-        the view tree so VoiceOver doesn't count it ("3 of 4" with 3 visible).
-      */}
       <Tabs.Screen
-        name="explore"
+        name="profile"
         options={{
-          href: null,
-          tabBarButton: () => null,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tabs>

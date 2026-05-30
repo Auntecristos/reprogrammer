@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Linking } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Type, Space, Radius } from '@/constants/theme';
 import useStore from '@/store/useStore';
@@ -14,14 +15,10 @@ import {
   formatTimeForDisplayString,
 } from '@/utils/time';
 
-/**
- * Profile screen. Reached from the small profile icon on the Dashboard.
- * Hidden from the tab bar — surfaced via `href: null` in (tabs)/_layout.tsx.
- */
+/** Top-level Profile tab — stats, quiet hours, notifications, about. */
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { behaviors, checkIns, appProfile, updateAppProfile, getStreak } = useStore();
   const [, setRefresh] = useState({});
@@ -114,13 +111,6 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + Space.xxl }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backButton}
-          accessibilityLabel="Back"
-        >
-          <Text style={[styles.backText, { color: colors.tint }]}>← Back</Text>
-        </Pressable>
         <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
       </View>
 
@@ -152,6 +142,15 @@ export default function ProfileScreen() {
             ? 'Disabled in system settings'
             : 'Enabled'}
         </Text>
+        <Pressable
+          onPress={() => Linking.openSettings()}
+          style={[styles.settingsButton, { borderColor: colors.border }]}
+          accessibilityLabel="Open system settings"
+        >
+          <Text style={[styles.settingsButtonText, { color: colors.tint }]}>
+            Open System Settings
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.section}>
@@ -219,6 +218,9 @@ export default function ProfileScreen() {
         <Text style={[styles.tagline, { color: colors.tint }]}>
           Notice · Repeat · Reprogram
         </Text>
+        <Text style={[styles.versionLabel, { color: colors.textMuted }]}>
+          Version {Constants.expoConfig?.version ?? 'dev'}
+        </Text>
       </View>
 
       <View style={styles.spacing} />
@@ -235,13 +237,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.xl,
     paddingBottom: Space.lg,
     gap: Space.md,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
-  backText: {
-    ...Type.body,
-    fontWeight: '500',
   },
   title: {
     ...Type.display2,
@@ -311,6 +306,21 @@ const styles = StyleSheet.create({
     ...Type.body,
     fontWeight: '600',
     letterSpacing: 1,
+  },
+  versionLabel: {
+    ...Type.caption,
+    marginTop: Space.sm,
+  },
+  settingsButton: {
+    marginTop: Space.sm,
+    paddingVertical: Space.sm,
+    paddingHorizontal: Space.md,
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    alignSelf: 'flex-start',
+  },
+  settingsButtonText: {
+    ...Type.bodyBold,
   },
   spacing: {
     height: Space.massive,
