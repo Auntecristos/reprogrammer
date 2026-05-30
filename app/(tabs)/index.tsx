@@ -138,6 +138,11 @@ export default function DashboardScreen() {
       toggleSelected(id);
       return;
     }
+    // First-visit coachmark dismisses on any tile interaction — by the time
+    // the user has tapped a tile, they no longer need the hint.
+    if (appProfile.showFirstTilePrompt) {
+      void updateAppProfile({ showFirstTilePrompt: false });
+    }
     router.push(`/behavior/${id}`);
   };
 
@@ -250,9 +255,22 @@ export default function DashboardScreen() {
     appProfile.lastLapseAcknowledged !== true &&
     !lapseSnoozedRecently &&
     Date.now() - appProfile.lastLapseAt < RELAPSE_BANNER_TTL_MS;
+  // Look up the lapsed behavior — used to name it in the banner and to
+  // target the "Resume" CTA. Falls back to the generic banner if the
+  // behavior has since been deleted (e.g., user nuked it after the lapse).
+  const lapsedBehavior = appProfile.lastLapseBehaviorId
+    ? behaviors.find((b) => b.id === appProfile.lastLapseBehaviorId)
+    : undefined;
 
   const handleOpenRelapseGuide = () => {
     openGuide('guide-relapse-and-restart');
+    void updateAppProfile({ lastLapseAcknowledged: true });
+  };
+
+  const handleResumeLapsedBehavior = async () => {
+    if (!lapsedBehavior) return;
+    await updateBehavior({ ...lapsedBehavior, pausedUntil: undefined });
+    await rescheduleAll({ force: true });
     void updateAppProfile({ lastLapseAcknowledged: true });
   };
 
@@ -458,41 +476,84 @@ export default function DashboardScreen() {
               },
             ]}
           >
-            <Pressable
-              onPress={handleOpenRelapseGuide}
-              style={styles.relapseBannerBody}
-              accessibilityLabel="Open the When You Slip guide"
-              accessibilityHint="Compassionate restart practice after a missed day"
-            >
-              <Text style={[styles.relapseBannerTitle, { color: colors.text }]}>
-                Yesterday was hard.
-              </Text>
-              <Text
-                style={[styles.relapseBannerSub, { color: colors.textMuted }]}
-              >
-                A short read on how to come back without making it bigger than it is.
-              </Text>
-            </Pressable>
-            <View style={styles.relapseBannerActions}>
+            <View style={styles.relapseBannerTopRow}>
+              <View style={styles.relapseBannerBody}>
+                <Text
+                  style={[styles.relapseBannerTitle, { color: colors.text }]}
+                >
+                  {lapsedBehavior
+                    ? `You paused ${lapsedBehavior.title} after a hard run.`
+                    : 'Yesterday was hard.'}
+                </Text>
+                <Text
+                  style={[styles.relapseBannerSub, { color: colors.textMuted }]}
+                >
+                  Coming back is the practice. No streak is wasted.
+                </Text>
+              </View>
+              <View style={styles.relapseBannerActions}>
+                <Pressable
+                  onPress={handleSnoozeRelapseBanner}
+                  style={styles.relapseBannerSnooze}
+                  hitSlop={8}
+                  accessibilityLabel="Hide this banner for a week"
+                >
+                  <Text
+                    style={[
+                      styles.relapseBannerSnoozeText,
+                      { color: colors.textMuted },
+                    ]}
+                  >
+                    Hide
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleDismissRelapseBanner}
+                  style={styles.relapseBannerDismiss}
+                  hitSlop={8}
+                  accessibilityLabel="Dismiss restart prompt"
+                >
+                  <IconSymbol name="xmark" size={16} color={colors.textMuted} />
+                </Pressable>
+              </View>
+            </View>
+            <View style={styles.relapseBannerCtaRow}>
+              {lapsedBehavior ? (
+                <Pressable
+                  onPress={handleResumeLapsedBehavior}
+                  style={[
+                    styles.relapseBannerResume,
+                    { backgroundColor: colors.tint },
+                  ]}
+                  accessibilityLabel={`Resume ${lapsedBehavior.title}`}
+                  accessibilityRole="button"
+                >
+                  <Text
+                    style={[
+                      styles.relapseBannerResumeText,
+                      { color: colors.textOnBrand },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    Resume {lapsedBehavior.title}
+                  </Text>
+                </Pressable>
+              ) : null}
               <Pressable
-                onPress={handleSnoozeRelapseBanner}
-                style={styles.relapseBannerSnooze}
+                onPress={handleOpenRelapseGuide}
+                style={styles.relapseBannerGuideLink}
                 hitSlop={8}
-                accessibilityLabel="Hide this banner for a week"
+                accessibilityLabel="Open the When You Slip guide"
+                accessibilityRole="link"
               >
                 <Text
-                  style={[styles.relapseBannerSnoozeText, { color: colors.textMuted }]}
+                  style={[
+                    styles.relapseBannerGuideLinkText,
+                    { color: colors.text },
+                  ]}
                 >
-                  Hide
+                  Read restart guide →
                 </Text>
-              </Pressable>
-              <Pressable
-                onPress={handleDismissRelapseBanner}
-                style={styles.relapseBannerDismiss}
-                hitSlop={8}
-                accessibilityLabel="Dismiss restart prompt"
-              >
-                <IconSymbol name="xmark" size={16} color={colors.textMuted} />
               </Pressable>
             </View>
           </View>
@@ -544,9 +605,37 @@ export default function DashboardScreen() {
             </View>
           </View>
         ) : (
-          <View style={styles.grid}>
-            {activeBehaviors.map((b) => (
-              <StateTile
+          <>
+            {appProfile.showFirstTilePrompt ? (
+              <View
+                style={[
+                  styles.firstTilePrompt,
+                  {
+                    backgroundColor: colors.tintSoft,
+                    borderColor: colors.tintMuted,
+                  },
+                ]}
+                accessibilityLiveRegion="polite"
+              >
+                <Text
+                  style={[styles.firstTilePromptText, { color: colors.text }]}
+                >
+                  Tap a state to check in.
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    void updateAppProfile({ showFirstTilePrompt: false })
+                  }
+                  hitSlop={8}
+                  accessibilityLabel="Dismiss coachmark"
+                >
+                  <IconSymbol name="xmark" size={14} color={colors.textMuted} />
+                </Pressable>
+              </View>
+            ) : null}
+            <View style={styles.grid}>
+              {activeBehaviors.map((b) => (
+                <StateTile
                 key={b.id}
                 behavior={b}
                 today={today}
@@ -577,7 +666,8 @@ export default function DashboardScreen() {
                 </Text>
               </Pressable>
             )}
-          </View>
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -942,13 +1032,51 @@ const styles = StyleSheet.create({
     paddingTop: Space.sm,
   },
   relapseBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.sm,
+    gap: Space.md,
     padding: Space.md,
     marginBottom: Space.md,
     borderRadius: Radius.md,
     borderWidth: 1,
+  },
+  relapseBannerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Space.sm,
+  },
+  relapseBannerCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.md,
+    flexWrap: 'wrap',
+  },
+  relapseBannerResume: {
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.sm,
+    flexShrink: 1,
+  },
+  relapseBannerResumeText: { ...Type.bodyBold },
+  relapseBannerGuideLink: {
+    paddingVertical: Space.xs,
+  },
+  relapseBannerGuideLinkText: {
+    ...Type.body,
+    textDecorationLine: 'underline',
+  },
+  firstTilePrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
+    marginBottom: Space.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    gap: Space.sm,
+  },
+  firstTilePromptText: {
+    ...Type.body,
+    flex: 1,
   },
   permissionBanner: {
     gap: Space.sm,

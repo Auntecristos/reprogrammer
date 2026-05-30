@@ -20,7 +20,7 @@ export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
-  const { addBehavior, setOnboarded } = useStore();
+  const { addBehavior, setOnboarded, updateAppProfile } = useStore();
   const { openGuide } = useContentModals();
   const [step, setStep] = useState<Step>('splash');
 
@@ -48,6 +48,9 @@ export default function OnboardingScreen() {
     };
     await addBehavior(behavior);
     await scheduleForBehavior(behavior);
+    // First-visit coachmark lands on the dashboard once a behavior exists.
+    // Cleared as soon as the user taps any tile.
+    await updateAppProfile({ showFirstTilePrompt: true });
     await setOnboarded(true);
     // Open the paired guide over the dashboard so onboarding ends in a
     // research-grounded read, not a chore-list. Falls back silently if the
@@ -58,6 +61,10 @@ export default function OnboardingScreen() {
   };
 
   const skipOnboarding = async () => {
+    // Skip leaves the user on the empty dashboard, which already has its
+    // own CTAs — no first-tile coachmark to show. We still set the flag so
+    // that if they later create a behavior, the prompt lands once.
+    await updateAppProfile({ showFirstTilePrompt: true });
     await setOnboarded(true);
   };
 
@@ -120,6 +127,21 @@ export default function OnboardingScreen() {
             style={[styles.cta, { backgroundColor: colors.tint, marginTop: Space.md }]}
           >
             <Text style={[styles.ctaText, { color: colors.textOnBrand }]}>I understand</Text>
+          </Pressable>
+          {/* Visible escape hatch for users who don't want to commit to the
+              three rules. The Phase-3-deferred goal was: never force-quit
+              to leave a screen. Skip lands them on the dashboard's
+              empty-state which already has Browse / Create CTAs. */}
+          <Pressable
+            onPress={skipOnboarding}
+            style={styles.inlineSkip}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Skip onboarding and go to the dashboard"
+          >
+            <Text style={[styles.inlineSkipText, { color: colors.textMuted }]}>
+              Skip onboarding
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -275,5 +297,14 @@ const styles = StyleSheet.create({
   skipButtonText: {
     ...Type.body,
     fontWeight: '500',
+  },
+  inlineSkip: {
+    alignSelf: 'center',
+    paddingVertical: Space.md,
+    marginTop: Space.sm,
+  },
+  inlineSkipText: {
+    ...Type.body,
+    textDecorationLine: 'underline',
   },
 });
