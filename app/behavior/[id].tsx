@@ -16,8 +16,10 @@ import { useCallback, useState } from 'react';
 import { cancelForBehavior, rescheduleAll, sendTestNotification } from '@/services/notifications';
 import { endOfLocalDay } from '@/services/scheduler-core';
 import { deriveStage, stageLabel } from '@/services/levels';
+import { domainLabel } from '@/services/library-content';
 import { useContentModals } from '@/components/library/content-modals-provider';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { CalendarHeatmap } from '@/components/calendar-heatmap';
 
 function formatPausedUntil(ms: number): string {
   const d = new Date(ms);
@@ -200,6 +202,14 @@ export default function BehaviorDetailScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
+            {behavior.domain ? (
+              <Text
+                style={[styles.domainEyebrow, { color: colors.textMuted }]}
+                accessibilityLabel={`Domain: ${domainLabel(behavior.domain)}`}
+              >
+                {domainLabel(behavior.domain).toUpperCase()}
+              </Text>
+            ) : null}
             <Text style={[styles.title, { color: colors.text }]}>
               {behavior.title}
             </Text>
@@ -258,6 +268,18 @@ export default function BehaviorDetailScreen() {
         <Text style={[styles.streakDays, { color: colors.textOnBrand }]}>
           day streak
         </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Last 8 weeks
+        </Text>
+        <CalendarHeatmap
+          behaviorId={behavior.id}
+          checkIns={checkIns}
+          activeDays={behavior.activeDays}
+          colors={colors}
+        />
       </View>
 
       <View style={styles.section}>
@@ -462,6 +484,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Space.md,
     marginBottom: Space.sm,
+  },
+  domainEyebrow: {
+    ...Type.micro,
+    marginBottom: Space.xs,
   },
   title: { ...Type.h1 },
   testButton: {
