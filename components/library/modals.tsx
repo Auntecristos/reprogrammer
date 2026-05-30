@@ -463,7 +463,10 @@ const styles = StyleSheet.create({
     paddingTop: Space.sm,
     paddingBottom: Space.xxxl,
   },
-  modalTitle: { ...Type.h1 },
+  // Editorial display for guide / template / package titles inside the
+  // content modal. Diverges from `Type.h1` (used elsewhere for screen
+  // headers) because long-form reading wants more presence on the title.
+  modalTitle: { ...Type.display2 },
   modalMeta: { ...Type.caption, marginTop: Space.xs },
   sectionLabel: {
     ...Type.micro,
