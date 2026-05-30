@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Behavior, CheckIn, ReminderAttempt, AppProfile, BehaviorKind } from '../types';
+import { Behavior, CheckIn, ReminderAttempt, AppProfile, BehaviorKind, Stage } from '../types';
 import { calculateStreak } from '../services/streak';
 import {
   INITIAL_LEVEL,
@@ -104,6 +104,20 @@ export interface PendingUndoDelete {
   deletedAt: number;
 }
 
+/**
+ * A just-fired level-up waiting to be celebrated by the modal at root.
+ * Memory-only: re-firing on next launch would be a delayed surprise rather
+ * than a moment-of-success. Cleared on dismiss.
+ */
+export interface PendingLevelUp {
+  behaviorId: string;
+  behaviorTitle: string;
+  fromStage: Stage;
+  toStage: Stage;
+  streak: number;
+  triggeredAt: number;
+}
+
 interface StoreState {
   behaviors: Behavior[];
   checkIns: CheckIn[];
@@ -111,6 +125,7 @@ interface StoreState {
   appProfile: AppProfile;
   isHydrated: boolean;
   pendingUndo: PendingUndoDelete | null;
+  pendingLevelUp: PendingLevelUp | null;
 
   hydrate: () => Promise<void>;
   addBehavior: (behavior: Behavior) => Promise<void>;
@@ -134,6 +149,8 @@ interface StoreState {
    * to avoid a cycle).
    */
   restorePendingUndo: () => Promise<Behavior | null>;
+  /** Queue a level-up celebration; the root modal listens and renders. */
+  setPendingLevelUp: (p: PendingLevelUp | null) => void;
 }
 
 const useStore = create<StoreState>((set, get) => ({
@@ -143,6 +160,7 @@ const useStore = create<StoreState>((set, get) => ({
   appProfile: { hasOnboarded: false },
   isHydrated: false,
   pendingUndo: null,
+  pendingLevelUp: null,
 
   hydrate: async () => {
     try {
@@ -265,6 +283,10 @@ const useStore = create<StoreState>((set, get) => ({
 
   setPendingUndo: (p) => {
     set({ pendingUndo: p });
+  },
+
+  setPendingLevelUp: (p) => {
+    set({ pendingLevelUp: p });
   },
 
   restorePendingUndo: async () => {

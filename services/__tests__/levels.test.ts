@@ -17,6 +17,7 @@ import {
   applyLevelUp,
   applyLapse,
   deriveStage,
+  levelUpTransition,
   LEVEL_MULTIPLIERS,
   EFFECTIVE_INTERVAL_CAP_MIN,
   MIN_INTERVAL_FLOOR_MIN,
@@ -88,6 +89,44 @@ expect(deriveStage(2, 0) === 'in_progress', 'L2 → in_progress');
 expect(deriveStage(1, 7) === 'in_progress', 'streak 7 → in_progress');
 expect(deriveStage(4, 0) === 'habitual', 'L4 → habitual');
 expect(deriveStage(1, 28) === 'habitual', 'streak 28 → habitual');
+
+// levelUpTransition — pre-side uses yesterday's streak so the streak-7
+// case shows a real "starting → in_progress" instead of collapsing.
+const t1 = levelUpTransition(1, 7);
+expect(
+  t1.fromStage === 'starting' && t1.toStage === 'in_progress',
+  'L1, streak 7 → starting → in_progress (streak-driven boundary)'
+);
+
+const t2 = levelUpTransition(2, 14);
+expect(
+  t2.fromStage === 'in_progress' && t2.toStage === 'in_progress',
+  'L2, streak 14 → in_progress → in_progress (mid-stage level-up)'
+);
+
+const t3 = levelUpTransition(3, 21);
+expect(
+  t3.fromStage === 'in_progress' && t3.toStage === 'habitual',
+  'L3, streak 21 → in_progress → habitual (level-driven boundary)'
+);
+
+const t4 = levelUpTransition(4, 28);
+expect(
+  t4.fromStage === 'habitual' && t4.toStage === 'habitual',
+  'L4, streak 28 → habitual → habitual (top-stage level-up)'
+);
+
+const tCap = levelUpTransition(5, 35);
+expect(
+  tCap.toStage === 'habitual',
+  'level caps at 5 — next level still derives habitual, no overflow'
+);
+
+const tEdge = levelUpTransition(1, 1);
+expect(
+  tEdge.fromStage === 'starting',
+  'streak 1 — yesterdayStreak clamps at 0, fromStage = starting'
+);
 
 if (failures === 0) {
   console.log('OK — all level/scheduler tests passed.');

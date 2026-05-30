@@ -10,6 +10,7 @@ import {
   shouldLevelUp,
   applyLevelUp,
   applyLapse,
+  levelUpTransition,
   LAPSE_NO_THRESHOLD,
 } from './levels';
 import {
@@ -343,8 +344,20 @@ export async function handleCheckInResponse(
     if (result === 'yes') {
       const streak = calculateStreak(behaviorId, store.checkIns);
       if (shouldLevelUp(streak, behavior.lastLevelUpStreak)) {
+        const { fromStage, toStage } = levelUpTransition(behavior.level, streak);
         await store.updateBehavior(applyLevelUp(behavior, streak));
         await rescheduleAll({ force: true });
+        // Queue the celebration — the root LevelUpModal renders on the next
+        // store tick, regardless of which screen the user is on (in-app
+        // check-in modal, notification action from background, etc.).
+        store.setPendingLevelUp({
+          behaviorId,
+          behaviorTitle: behavior.title,
+          fromStage,
+          toStage,
+          streak,
+          triggeredAt: Date.now(),
+        });
       }
     }
     return;

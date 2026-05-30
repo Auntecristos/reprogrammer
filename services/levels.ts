@@ -74,3 +74,28 @@ export function stageLabel(stage: Stage): string {
   if (stage === 'in_progress') return 'In Progress';
   return 'Starting';
 }
+
+/**
+ * The before/after stage labels for a just-fired level-up. Used by the
+ * level-up celebration modal. `currentLevel` is the behavior's level
+ * before `applyLevelUp` runs; `streak` is today's streak (the value that
+ * triggered the level-up). Pre-stage uses `streak - 1` so the "from" side
+ * reflects yesterday's effective stage rather than today's — otherwise
+ * the streak-driven branch of deriveStage would make from == to at the
+ * common streak-7 case.
+ */
+export interface LevelUpTransition {
+  fromStage: Stage;
+  toStage: Stage;
+}
+
+export function levelUpTransition(
+  currentLevel: number,
+  streak: number
+): LevelUpTransition {
+  const yesterdayStreak = Math.max(0, streak - 1);
+  const fromStage = deriveStage(currentLevel, yesterdayStreak);
+  const nextLevel = Math.min(LEVEL_MAX, currentLevel + 1);
+  const toStage = deriveStage(nextLevel, streak);
+  return { fromStage, toStage };
+}
