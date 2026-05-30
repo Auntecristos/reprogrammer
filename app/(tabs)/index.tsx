@@ -26,7 +26,7 @@ import { Alert } from 'react-native';
 import type { Behavior } from '@/types';
 import { deriveStage, stageLabel } from '@/services/levels';
 import { useContentModals } from '@/components/library/content-modals-provider';
-import { cancelForBehavior, rescheduleAll } from '@/services/notifications';
+import { cancelForBehavior, rescheduleAll, scheduleForBehavior } from '@/services/notifications';
 import { endOfLocalDay } from '@/services/scheduler-core';
 
 const RELAPSE_BANNER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -71,6 +71,9 @@ export default function DashboardScreen() {
   const [, setRefresh] = useState({});
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const pendingUndo = useStore((state) => state.pendingUndo);
+  const setPendingUndo = useStore((state) => state.setPendingUndo);
+  const restorePendingUndo = useStore((state) => state.restorePendingUndo);
 
   useFocusEffect(
     useCallback(() => {
@@ -256,6 +259,38 @@ export default function DashboardScreen() {
     void updateAppProfile({ lastLapseSnoozedAt: Date.now() });
   };
 
+  // Undo banner: auto-clear ~5s after delete. We also re-render at that
+  // moment so the banner falls off without waiting for another store
+  // mutation. The "+ 100" is a small buffer to ensure the deadline has
+  // truly passed when the timer fires.
+  const UNDO_TTL_MS = 5000;
+  useEffect(() => {
+    if (!pendingUndo) return;
+    const elapsed = Date.now() - pendingUndo.deletedAt;
+    const remaining = Math.max(0, UNDO_TTL_MS - elapsed);
+    const timer = setTimeout(() => {
+      setPendingUndo(null);
+    }, remaining + 100);
+    return () => clearTimeout(timer);
+  }, [pendingUndo, setPendingUndo]);
+
+  const showUndoBanner =
+    pendingUndo != null &&
+    Date.now() - pendingUndo.deletedAt < UNDO_TTL_MS;
+
+  const handleUndoDelete = async () => {
+    const restored = await restorePendingUndo();
+    if (restored) {
+      // The behavior is back in the store; rebuild its notifications so
+      // reminders fire as if nothing happened.
+      await scheduleForBehavior(restored);
+    }
+  };
+
+  const handleDismissUndoBanner = () => {
+    setPendingUndo(null);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Top bar: profile · today · add — or, in select mode: cancel · N selected */}
@@ -331,6 +366,43 @@ export default function DashboardScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.gridScroll}>
+        {showUndoBanner && pendingUndo ? (
+          <Animated.View
+            entering={FadeIn.duration(160)}
+            style={[
+              styles.undoBanner,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.undoBannerBody}>
+              <Text style={[styles.undoBannerTitle, { color: colors.text }]}>
+                Deleted &ldquo;{pendingUndo.behavior.title}&rdquo;
+              </Text>
+              <Text style={[styles.undoBannerSub, { color: colors.textMuted }]}>
+                5 seconds to bring it back.
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleUndoDelete}
+              style={[styles.undoBannerCta, { backgroundColor: colors.tint }]}
+              accessibilityLabel="Undo delete"
+            >
+              <Text
+                style={[styles.undoBannerCtaText, { color: colors.textOnBrand }]}
+              >
+                Undo
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleDismissUndoBanner}
+              style={styles.undoBannerDismiss}
+              hitSlop={8}
+              accessibilityLabel="Dismiss undo banner"
+            >
+              <IconSymbol name="xmark" size={16} color={colors.textMuted} />
+            </Pressable>
+          </Animated.View>
+        ) : null}
         {allCaughtUp ? (
           <AllCaughtUpCard colors={colors} />
         ) : null}
@@ -876,6 +948,32 @@ const styles = StyleSheet.create({
   relapseBannerSnoozeText: {
     ...Type.caption,
     fontWeight: '600',
+  },
+  /**
+   * Undo-delete banner. Quiet visual chrome (surface, not danger) — the
+   * tone is "the action succeeded, here's the reversal" rather than "are
+   * you sure." 5-second TTL handled by the parent's useEffect.
+   */
+  undoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+    padding: Space.md,
+    marginBottom: Space.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+  },
+  undoBannerBody: { flex: 1, gap: Space.xxs },
+  undoBannerTitle: { ...Type.bodyBold },
+  undoBannerSub: { ...Type.caption },
+  undoBannerCta: {
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.sm,
+  },
+  undoBannerCtaText: { ...Type.bodyBold },
+  undoBannerDismiss: {
+    padding: Space.xs,
   },
   /** Calm success card shown when every state for today has been checked in. */
   allCaughtUpCard: {

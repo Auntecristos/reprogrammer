@@ -44,6 +44,8 @@ export default function BehaviorDetailScreen() {
     deleteBehavior,
     updateBehavior,
     updateCheckIn,
+    getReminderAttempts,
+    setPendingUndo,
   } = useStore();
   const { openGuide } = useContentModals();
   const [, setRefresh] = useState({});
@@ -77,13 +79,22 @@ export default function BehaviorDetailScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete State', 'Are you sure? This cannot be undone.', [
+    Alert.alert('Delete State', 'You can undo this for 5 seconds.', [
       { text: 'Cancel' },
       {
         text: 'Delete',
         onPress: async () => {
+          // Snapshot the behavior + its attempts BEFORE deletion so the
+          // dashboard's Undo banner can restore it cleanly.
+          const attemptsBackup = getReminderAttempts(behavior.id);
           await cancelForBehavior(behavior.id);
           await deleteBehavior(behavior.id);
+          setPendingUndo({
+            kind: 'delete',
+            behavior,
+            attempts: attemptsBackup,
+            deletedAt: Date.now(),
+          });
           router.back();
         },
         style: 'destructive',
