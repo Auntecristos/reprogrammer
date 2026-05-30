@@ -21,13 +21,16 @@ import {
 } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import useStore from '@/store/useStore';
-import { useCallback, useEffect, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react';
 import { Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import type { Behavior } from '@/types';
 import { deriveStage, stageLabel } from '@/services/levels';
 import { useContentModals } from '@/components/library/content-modals-provider';
 import { cancelForBehavior, rescheduleAll, scheduleForBehavior } from '@/services/notifications';
 import { endOfLocalDay } from '@/services/scheduler-core';
+import { StreakConfetti } from '@/components/streak-confetti';
+import { isStreakMilestone } from '@/services/streak';
 
 const RELAPSE_BANNER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -740,6 +743,24 @@ function StateTile({
     transform: [{ scale: pressScale.value }],
   }));
 
+  // Streak milestone confetti: when streak crosses upward into a milestone
+  // (3 / 7 / 14 / 30), bump triggerKey to fire a one-shot burst. A ref tracks
+  // the previous value so re-renders that don't change streak (theme flips,
+  // sibling tile updates) never re-fire. On first mount we seed the ref with
+  // the current streak — a tile that mounts already at 7 stays quiet.
+  const [burstKey, setBurstKey] = useState(0);
+  const prevStreakRef = useRef(streak);
+  useEffect(() => {
+    const prev = prevStreakRef.current;
+    if (streak > prev && isStreakMilestone(streak)) {
+      setBurstKey((k) => k + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+    }
+    prevStreakRef.current = streak;
+  }, [streak]);
+
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -809,6 +830,15 @@ function StateTile({
           </Text>
         </View>
       </View>
+
+      <StreakConfetti
+        triggerKey={burstKey}
+        colors={{
+          tintCelebrate: colors.tintCelebrate,
+          warning: colors.warning,
+          tint: colors.tint,
+        }}
+      />
 
       {selectMode ? (
         <View

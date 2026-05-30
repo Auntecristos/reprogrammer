@@ -1,6 +1,18 @@
 import { CheckIn } from '../types';
 import { startOfDay, subDays, addDays } from 'date-fns';
 
+/**
+ * Streak day-counts that trigger a celebration burst on the dashboard tile.
+ * 3 = first hard-won repeat, 7 = level-up boundary, 14 = "doing the thing,"
+ * 30 = monthly habit. Beyond 30 we deliberately quiet down — the goal is
+ * to fade celebrations into background as the practice becomes identity.
+ */
+export const STREAK_MILESTONES = [3, 7, 14, 30] as const;
+
+export function isStreakMilestone(streak: number): boolean {
+  return (STREAK_MILESTONES as readonly number[]).includes(streak);
+}
+
 export function calculateStreak(behaviorId: string, checkIns: CheckIn[]): number {
   const behaviorCheckIns = checkIns.filter((ci) => ci.behaviorId === behaviorId);
   if (behaviorCheckIns.length === 0) return 0;
