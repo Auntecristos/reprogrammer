@@ -15,6 +15,7 @@ import {
   setupNotificationCategory,
 } from '@/services/notifications';
 import { ContentModalsProvider } from '@/components/library/content-modals-provider';
+import { LevelUpModal } from '@/components/level-up-modal';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -112,6 +113,7 @@ export default function RootLayout() {
           <Stack.Screen name="behavior/[id]" options={{ title: 'State' }} />
         </Stack>
       </ContentModalsProvider>
+      <LevelUpModal />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

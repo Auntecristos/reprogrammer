@@ -37,6 +37,9 @@ const MAPPING = {
   'play.fill': 'play-arrow',
   'flame.fill': 'local-fire-department',
   'bell.fill': 'notifications',
+  // Celebration / level-up
+  'sparkles': 'auto-awesome',
+  'arrow.right': 'arrow-forward',
 } as IconMapping;
 
 /**
