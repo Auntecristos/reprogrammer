@@ -11,7 +11,7 @@
  */
 
 import { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -41,9 +41,23 @@ export function LevelUpModal() {
 
   if (!pending) return null;
 
-  const { behaviorTitle, fromStage, toStage } = pending;
+  const { behaviorTitle, fromStage, toStage, streak } = pending;
   const stageChanged = fromStage !== toStage;
   const dismiss = () => clear(null);
+
+  // Share is the ONE outbound social moment in the app — gated behind
+  // real level-ups so it never feels like Strava-flex. Copy frames the
+  // milestone in terms of the user's own arc (stage, day-count), not as
+  // a leaderboard brag.
+  const handleShare = () => {
+    const transitionLine = stageChanged
+      ? `${stageLabel(fromStage)} → ${stageLabel(toStage)}`
+      : stageLabel(toStage);
+    const message = `Day ${streak} of "${behaviorTitle}" on Reprogrammer — ${transitionLine}.`;
+    void Share.share({ message }).catch(() => {
+      // user dismissed the sheet, or the platform fired a non-error reject
+    });
+  };
 
   // FadeIn delays compose the 1.2s arc. When reduceMotion is on, each
   // line just appears — no entering animation at all.
@@ -124,6 +138,24 @@ export function LevelUpModal() {
             >
               <Text style={[styles.ctaText, { color: colors.textOnBrand }]}>
                 Keep going
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleShare}
+              style={styles.shareLink}
+              hitSlop={8}
+              accessibilityLabel="Share this milestone"
+              accessibilityRole="button"
+            >
+              <IconSymbol
+                name="square.and.arrow.up"
+                size={14}
+                color={colors.textMuted}
+              />
+              <Text
+                style={[styles.shareLinkText, { color: colors.textMuted }]}
+              >
+                Share
               </Text>
             </Pressable>
           </Animated.View>
@@ -220,6 +252,8 @@ const styles = StyleSheet.create({
   },
   ctaWrap: {
     marginTop: Space.xl,
+    alignItems: 'center',
+    gap: Space.md,
   },
   cta: {
     paddingHorizontal: Space.xxl,
@@ -230,5 +264,14 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     ...Type.bodyBold,
+  },
+  shareLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs,
+    paddingVertical: Space.xs,
+  },
+  shareLinkText: {
+    ...Type.caption,
   },
 });
