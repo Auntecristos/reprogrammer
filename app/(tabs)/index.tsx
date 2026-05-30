@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSequence,
   withTiming,
@@ -17,6 +18,7 @@ import {
   Type,
   Space,
   Radius,
+  Layout,
   type ThemeColors,
 } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -351,6 +353,7 @@ export default function DashboardScreen() {
                   styles.headerSecondaryButton,
                   { backgroundColor: colors.surfaceMuted },
                 ]}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                 accessibilityLabel="Select states for bulk actions"
                 accessibilityHint="Tap to enter selection mode. Long-press a tile also works."
               >
@@ -633,21 +636,24 @@ export default function DashboardScreen() {
  */
 function AllCaughtUpCard({ colors }: { colors: ThemeColors }) {
   const scale = useSharedValue(1);
+  const reduceMotion = useReducedMotion();
   // Kick off a one-shot pulse on mount. withSequence runs the scale up then
   // back to rest; no looping. The FadeIn props on the Animated.View handle
-  // the opacity entry independently.
+  // the opacity entry independently. Reduce Motion skips both — the card
+  // still lands, just without the entrance choreography.
   useEffect(() => {
+    if (reduceMotion) return;
     scale.value = withSequence(
       withTiming(1.04, { duration: 280 }),
       withTiming(1, { duration: 320 })
     );
-  }, [scale]);
+  }, [scale, reduceMotion]);
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
   return (
     <Animated.View
-      entering={FadeIn.duration(200)}
+      entering={reduceMotion ? undefined : FadeIn.duration(200)}
       style={[
         styles.allCaughtUpCard,
         pulseStyle,
@@ -737,11 +743,13 @@ function StateTile({
 
   // Press feedback: tile scales 1.0 → 0.97 on press-in, springs back on
   // press-out. Runs on the UI thread via Reanimated; cancels cleanly if
-  // the gesture turns into a long-press without releasing.
+  // the gesture turns into a long-press without releasing. Reduce Motion
+  // pins the scale at 1 — the gesture still works, just no visual feedback.
   const pressScale = useSharedValue(1);
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
   }));
+  const reduceMotion = useReducedMotion();
 
   // Streak milestone confetti: when streak crosses upward into a milestone
   // (3 / 7 / 14 / 30), bump triggerKey to fire a one-shot burst. A ref tracks
@@ -766,9 +774,11 @@ function StateTile({
       onPress={onPress}
       onLongPress={onLongPress}
       onPressIn={() => {
+        if (reduceMotion) return;
         pressScale.value = withTiming(0.97, { duration: 90 });
       }}
       onPressOut={() => {
+        if (reduceMotion) return;
         pressScale.value = withTiming(1, { duration: 140 });
       }}
       delayLongPress={350}
@@ -1024,7 +1034,7 @@ const styles = StyleSheet.create({
     gap: Space.md,
   },
   tile: {
-    width: `${(100 - 4) / 2}%`, // two columns with gap
+    width: `${Layout.tileWidthPct}%`, // two columns; gap covered by styles.grid
     aspectRatio: 1,
     borderRadius: Radius.lg,
     padding: Space.md,

@@ -161,7 +161,9 @@ export default function CheckInScreen() {
             ]}
             accessibilityLabel={yesLabel}
           >
-            <Text style={styles.buttonText}>{yesLabel}</Text>
+            <Text style={[styles.buttonText, { color: colors.textOnBrand }]}>
+              {yesLabel}
+            </Text>
           </Pressable>
           <View style={styles.triedRow}>
             <Pressable
@@ -304,7 +306,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     ...Type.h2,
-    color: 'white',
   },
   labelRow: {
     flexDirection: 'row',

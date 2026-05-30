@@ -62,6 +62,8 @@ export function LevelUpModal() {
           styles.scrim,
           { backgroundColor: colors.background },
         ]}
+        accessibilityViewIsModal
+        accessibilityLiveRegion="polite"
       >
         <View
           style={[
